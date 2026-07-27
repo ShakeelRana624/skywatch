@@ -1,0 +1,47 @@
+name: fypapp
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  video_player: ^2.8.0
+  url_launcher: ^6.2.6
+  firebase_core: ^4.5.0
+  firebase_auth: ^6.2.0
+  cloud_firestore: ^6.1.3
+  shared_preferences: ^2.2.2
+  firebase_database: ^12.1.4
+  google_maps_flutter: ^2.5.0
+  flutter_map: ^6.1.0
+  latlong2: ^0.9.0
+  geolocator: ^10.1.0
+  permission_handler: ^11.0.1
+  audioplayers: ^6.6.0
+  chewie: ^1.7.0
+  js: ^0.7.2
+  http: ^1.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/pic.png"
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/
