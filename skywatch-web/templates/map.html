@@ -1,0 +1,1480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>SKYWATCH | IOVs Real-Time Geospatial Intelligence</title>
+
+<!-- Bootstrap & Icons -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<!-- Leaflet Maps -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Leaflet Marker Cluster for better performance -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    :root {
+        --primary: #0dcaf0;
+        --primary-dark: #0a58ca;
+        --danger: #ff4d6d;
+        --warning: #ffc107;
+        --success: #00ff95;
+        --dark-bg: #050814;
+        --card-bg: rgba(15, 25, 45, 0.92);
+        --neon-glow: 0 0 15px var(--primary), 0 0 25px var(--primary);
+    }
+
+    body {
+        font-family: 'Exo 2', sans-serif;
+        background: var(--dark-bg);
+        color: #fff;
+        overflow: hidden;
+        height: 100vh;
+    }
+
+    /* Animated Background */
+    body::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(circle at 20% 30%, rgba(13,202,240,0.08) 0%, transparent 60%),
+                    radial-gradient(circle at 80% 70%, rgba(255,77,109,0.08) 0%, transparent 60%);
+        z-index: -2;
+        animation: pulseBg 8s ease-in-out infinite;
+    }
+
+    .grid-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image: linear-gradient(rgba(13,202,240,0.05) 1px, transparent 1px),
+                          linear-gradient(90deg, rgba(13,202,240,0.05) 1px, transparent 1px);
+        background-size: 45px 45px;
+        z-index: -1;
+        animation: gridMove 20s linear infinite;
+    }
+        animation: gridMove 20s linear infinite;
+    }
+
+    @keyframes gridMove {
+        0% { transform: translateY(0); }
+        100% { transform: translateY(45px); }
+    }
+
+    @keyframes pulseBg {
+        0%, 100% { opacity: 0.6; }
+        50% { opacity: 1; }
+    }
+
+    /* Navbar */
+    .navbar {
+        background: linear-gradient(90deg, rgba(13, 202, 240, 0.15), rgba(10, 88, 202, 0.15));
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(13, 202, 240, 0.3);
+        border-radius: 24px;
+        padding: 10px 24px;
+        margin: 12px 18px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        animation: slideDown 0.6s ease-out;
+        z-index: 1000;
+        position: relative;
+    }
+
+    @keyframes slideDown {
+        from { transform: translateY(-100px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+
+    .navbar h3 {
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 800;
+        background: linear-gradient(135deg, #fff, var(--primary));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 1.2rem;
+    }
+
+    .firebase-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 12px;
+        border-radius: 30px;
+        font-size: 0.7rem;
+        background: rgba(0,0,0,0.6);
+        border: 1px solid rgba(13,202,240,0.3);
+    }
+
+    .nav-buttons {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .nav-btn {
+        background: rgba(13, 202, 240, 0.12);
+        border: 1px solid rgba(13, 202, 240, 0.4);
+        color: #fff;
+        padding: 8px 18px;
+        border-radius: 30px;
+        text-decoration: none;
+        font-size: 0.85rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .nav-btn:hover {
+        background: rgba(13, 202, 240, 0.25);
+        border-color: rgba(13, 202, 240, 0.8);
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(13,202,240,0.3);
+    }
+
+    .nav-badge {
+        background: #ff4d6d;
+        color: #fff;
+        font-size: 0.7rem;
+        padding: 2px 7px;
+        border-radius: 20px;
+        position: absolute;
+        top: -6px;
+        right: -8px;
+        font-weight: 700;
+    }
+
+    /* Main Container */
+    .map-container {
+        position: relative;
+        height: calc(100vh - 85px);
+        margin: 0 18px 18px 18px;
+        border-radius: 28px;
+        overflow: hidden;
+        border: 1px solid rgba(13,202,240,0.3);
+        box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+    }
+
+    #map {
+        height: 100%;
+        width: 100%;
+        background: #0a0f1f;
+    }
+
+    /* Info Panel */
+    .info-panel {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        width: 320px;
+        background: var(--card-bg);
+        backdrop-filter: blur(12px);
+        border-radius: 20px;
+        border: 1px solid rgba(13,202,240,0.3);
+        padding: 18px;
+        z-index: 1000;
+        pointer-events: auto;
+        transition: all 0.3s ease;
+    }
+
+    .info-panel h4 {
+        font-family: 'Orbitron', sans-serif;
+        font-size: 1rem;
+        margin-bottom: 15px;
+        color: var(--primary);
+        border-bottom: 1px solid rgba(13,202,240,0.3);
+        padding-bottom: 8px;
+    }
+
+    .stat-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 12px;
+        font-size: 0.85rem;
+    }
+
+    .stat-value {
+        font-weight: 700;
+        color: var(--primary);
+        font-family: 'Orbitron', monospace;
+    }
+
+    .threat-list {
+        max-height: 200px;
+        overflow-y: auto;
+        margin-top: 12px;
+    }
+
+    .threat-item {
+        background: rgba(255,77,109,0.12);
+        border-left: 3px solid var(--danger);
+        padding: 8px;
+        margin-bottom: 8px;
+        border-radius: 8px;
+        font-size: 0.75rem;
+    }
+
+    .iov-item {
+        background: rgba(13,202,240,0.1);
+        border-left: 3px solid var(--primary);
+        padding: 8px;
+        margin-bottom: 8px;
+        border-radius: 8px;
+        font-size: 0.75rem;
+    }
+
+    .live-badge {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        background: #00ff95;
+        border-radius: 50%;
+        animation: pulse 1.5s infinite;
+        margin-right: 6px;
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.4; transform: scale(1.2); }
+    }
+
+    /* Legend */
+    .legend {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        background: var(--card-bg);
+        backdrop-filter: blur(12px);
+        border-radius: 16px;
+        padding: 12px 18px;
+        border: 1px solid rgba(13,202,240,0.3);
+        z-index: 1000;
+        font-size: 0.7rem;
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+    }
+
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .legend-color {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+    }
+
+    .legend-color.uav { background: #0dcaf0; box-shadow: 0 0 8px cyan; }
+    .legend-color.iov { background: #00ff95; box-shadow: 0 0 8px #00ff95; }
+    .legend-color.threat { background: #ff4d6d; box-shadow: 0 0 8px #ff4d6d; }
+    .legend-color.camera { background: #ffc107; }
+
+    /* ===== THREAT RADIATION PULSE ANIMATION ===== */
+    .threat-pulse-container {
+        position: relative;
+        width: 60px;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .threat-pulse-container .threat-icon {
+        position: relative;
+        z-index: 10;
+        font-size: 24px;
+        filter: drop-shadow(0 0 8px currentColor);
+        animation: iconPulse 1.5s ease-in-out infinite;
+    }
+    
+    .pulse-ring {
+        position: absolute;
+        border-radius: 50%;
+        border: 2px solid currentColor;
+        opacity: 0;
+        animation: radiationPulse 2s ease-out infinite;
+    }
+    
+    .pulse-ring:nth-child(1) {
+        width: 20px;
+        height: 20px;
+        animation-delay: 0s;
+    }
+    
+    .pulse-ring:nth-child(2) {
+        width: 35px;
+        height: 35px;
+        animation-delay: 0.4s;
+    }
+    
+    .pulse-ring:nth-child(3) {
+        width: 50px;
+        height: 50px;
+        animation-delay: 0.8s;
+    }
+    
+    .pulse-ring:nth-child(4) {
+        width: 65px;
+        height: 65px;
+        animation-delay: 1.2s;
+    }
+    
+    @keyframes radiationPulse {
+        0% {
+            transform: scale(0.5);
+            opacity: 0.8;
+        }
+        50% {
+            opacity: 0.4;
+        }
+        100% {
+            transform: scale(1.2);
+            opacity: 0;
+        }
+    }
+    
+    @keyframes iconPulse {
+        0%, 100% {
+            transform: scale(1);
+        }
+        50% {
+            transform: scale(1.1);
+        }
+    }
+    
+    /* Priority Colors for Pulse */
+    .threat-pulse-high { color: #ff4d6d; }
+    .threat-pulse-high .pulse-ring { border-color: #ff4d6d; box-shadow: 0 0 10px #ff4d6d, inset 0 0 5px rgba(255,77,109,0.3); }
+    
+    .threat-pulse-medium { color: #ffc107; }
+    .threat-pulse-medium .pulse-ring { border-color: #ffc107; box-shadow: 0 0 10px #ffc107, inset 0 0 5px rgba(255,193,7,0.3); }
+    
+    .threat-pulse-low { color: #00ff95; }
+    .threat-pulse-low .pulse-ring { border-color: #00ff95; box-shadow: 0 0 10px #00ff95, inset 0 0 5px rgba(0,255,149,0.3); }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); }
+    ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
+</style>
+</head>
+<body>
+
+<div class="grid-overlay"></div>
+
+<!-- Navbar -->
+<nav class="navbar">
+    <h3>
+        <i class="fas fa-satellite-dish"></i> SKYWATCH | IOV Geospatial Intel
+        <span id="firebaseStatus" class="firebase-status">
+            <span class="live-badge" style="background: #ff4d6d;"></span>
+            <span id="statusText">Connecting...</span>
+        </span>
+    </h3>
+    <div class="nav-buttons">
+        <a href="/dash" class="nav-btn" style="background: rgba(13,202,240,0.25); border-color: var(--primary);"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+        <a href="/alerts" class="nav-btn"><i class="fas fa-bell"></i> Alerts <span class="nav-badge" id="alertCount">0</span></a>
+        <a href="/logs" class="nav-btn"><i class="fas fa-history"></i> Logs</a>
+        <a href="/map" class="nav-btn"><i class="fas fa-map-marked-alt"></i> Maps</a>
+        <a href="/profile" class="nav-btn"><i class="fas fa-user-shield"></i> Profile</a>
+        <a href="/logout" class="nav-btn logout-btn" style="border-color:#ff4d6d;"><i class="fas fa-sign-out-alt"></i> Logout</a>
+    </div>
+</nav>
+
+<!-- Map Container -->
+<div class="map-container">
+    <div id="map"></div>
+
+    <!-- Info Panel -->
+    <div class="info-panel">
+        <h4><i class="fas fa-chart-line"></i> REAL-TIME STATUS</h4>
+        <div class="stat-row"><span>🚗 Active IOVs:</span><span class="stat-value" id="iovCount">0</span></div>
+        <div class="stat-row"><span>⚠️ Active Threats:</span><span class="stat-value" id="threatCount">0</span></div>
+        <div class="stat-row"><span>📹 Cameras Online:</span><span class="stat-value" id="cameraCount">0</span></div>
+        
+        <h4 class="mt-3"><i class="fas fa-exclamation-triangle"></i> RECENT THREATS</h4>
+        <div class="threat-list" id="threatList">
+            <div style="text-align:center; color:#aaa;">Loading threats...</div>
+        </div>
+        
+        <h4 class="mt-3"><i class="fas fa-car"></i> NEARBY IOVs</h4>
+        <div class="threat-list" id="iovList">
+            <div style="text-align:center; color:#aaa;">Loading IOVs...</div>
+        </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend">
+        <div class="legend-item"><div class="legend-color iov" style="background: #ff4d6d; box-shadow: 0 0 8px #ff4d6d;"></div><span>IOV Vehicle</span></div>
+        <div class="legend-item"><div class="legend-color threat"></div><span>Threat Alert</span></div>
+        <div class="legend-item"><div class="legend-color camera"></div><span>Camera Location</span></div>
+    </div>
+</div>
+
+<script>
+// ========== FIREBASE CONFIGURATION ==========
+const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyBo38muJcR0_gYFKz9gJ1BQEC1twgHy2tE",
+    authDomain: "fypiov.firebaseapp.com",
+    databaseURL: "https://fypiov-default-rtdb.firebaseio.com",
+    projectId: "fypiov",
+    storageBucket: "fypiov.firebasestorage.app",
+    messagingSenderId: "1022795874212",
+    appId: "1:1022795874212:web:1fd40b8bbe7849fd3acb31"
+};
+
+// ========== GLOBAL VARIABLES ==========
+let map;
+let uavMarkers = [];
+let iovMarkers = [];
+let threatMarkers = [];
+let cameraMarkers = [];
+let markerClusterGroup;
+let allAlerts = [];
+let iovsData = {};
+let camerasData = {};
+let trackedVehicle = null;
+
+// Route tracking variables
+let routeLines = [];
+let activeRoutes = new Map(); // alertId -> route data
+let currentIOVPosition = null;
+let targetAlertPosition = null;
+let routeUpdateInterval = null;
+
+// Threat icon with radiation pulse - priority based colors
+function getThreatIcon(priority = 'MEDIUM') {
+    const priorityClass = priority === 'HIGH' ? 'threat-pulse-high' : priority === 'MEDIUM' ? 'threat-pulse-medium' : 'threat-pulse-low';
+    const iconColor = priority === 'HIGH' ? '#ff4d6d' : priority === 'MEDIUM' ? '#ffc107' : '#00ff95';
+    
+    return L.divIcon({
+        html: `
+            <div class="threat-pulse-container ${priorityClass}">
+                <div class="pulse-ring"></div>
+                <div class="pulse-ring"></div>
+                <div class="pulse-ring"></div>
+                <div class="pulse-ring"></div>
+                <i class="fas fa-skull-crossbones threat-icon" style="color: ${iconColor};"></i>
+            </div>
+        `,
+        iconSize: [60, 60],
+        className: 'custom-marker threat-marker',
+        iconAnchor: [30, 30]
+    });
+}
+
+// Custom Icons
+const uavIcon = L.divIcon({
+    html: '<i class="fas fa-drone" style="font-size: 22px; color: #0dcaf0; filter: drop-shadow(0 0 5px cyan);"></i>',
+    iconSize: [30, 30],
+    className: 'custom-marker'
+});
+
+const iovIcon = L.divIcon({
+    html: '<i class="fas fa-car-side" style="font-size: 22px; color: #ff4d6d; filter: drop-shadow(0 0 4px #ff4d6d);"></i>',
+    iconSize: [30, 30],
+    className: 'custom-marker'
+});
+
+const trackedIovIcon = L.divIcon({
+    html: '<i class="fas fa-car-side" style="font-size: 26px; color: #ff0000; filter: drop-shadow(0 0 8px #ff0000); animation: pulse 1s infinite;"></i>',
+    iconSize: [35, 35],
+    className: 'custom-marker tracked-vehicle'
+});
+
+const threatIcon = L.divIcon({
+    html: '<i class="fas fa-skull-crossbones" style="font-size: 24px; color: #ff4d6d; filter: drop-shadow(0 0 8px #ff4d6d); animation: pulse 1s infinite;"></i>',
+    iconSize: [30, 30],
+    className: 'custom-marker'
+});
+
+const cameraIcon = L.divIcon({
+    html: '<i class="fas fa-video" style="font-size: 18px; color: #ffc107; filter: drop-shadow(0 0 3px gold);"></i>',
+    iconSize: [24, 24],
+    className: 'custom-marker'
+});
+
+// ========== GET URL PARAMETERS ==========
+function getUrlParameter(name) {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get(name);
+}
+
+// ========== INITIALIZE MAP ==========
+function initMap() {
+    map = L.map('map').setView([32.5, 74.2], 10);
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19
+    }).addTo(map);
+    
+    markerClusterGroup = L.markerClusterGroup({
+        spiderfyOnMaxZoom: true,
+        showCoverageOnHover: false,
+        zoomToBoundsOnClick: true,
+        disableClusteringAtZoom: 14
+    });
+    map.addLayer(markerClusterGroup);
+    
+    console.log('🗺️ Map initialized with light tiles');
+}
+
+// ========== FIREBASE INITIALIZATION ==========
+function initFirebase() {
+    try {
+        // Check if Firebase app is already initialized
+        if (firebase.apps.length === 0) {
+            firebase.initializeApp(FIREBASE_CONFIG);
+        }
+        const db = firebase.database();
+        
+        const statusDiv = document.getElementById('firebaseStatus');
+        const statusText = document.getElementById('statusText');
+        
+        db.ref('.info/connected').on('value', (snap) => {
+            if (snap.val()) {
+                statusDiv.querySelector('.live-badge').style.background = '#00ff95';
+                statusText.innerText = 'LIVE';
+                console.log('✅ Firebase Connected');
+                loadFirebaseData(db);
+            } else {
+                statusDiv.querySelector('.live-badge').style.background = '#ff4d6d';
+                statusText.innerText = 'OFFLINE';
+            }
+        });
+    } catch (error) {
+        console.error('Firebase init error:', error);
+        loadDemoData();
+    }
+}
+
+// ========== LOAD ALL FIREBASE DATA ==========
+function loadFirebaseData(db) {
+    db.ref('alerts').on('value', (snapshot) => {
+        const alerts = snapshot.val();
+        allAlerts = [];
+        if (alerts) {
+            Object.keys(alerts).forEach(key => {
+                const alert = alerts[key];
+                alert.id = key;
+                allAlerts.push(alert);
+                
+                // Check if alert was accepted by IoV
+                if (alert.status === 'accepted' && alert.accepted_by === 'IOV') {
+                    handleAcceptedAlert(alert, key);
+                }
+            });
+            allAlerts.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        }
+        updateThreatMarkers();
+        updateThreatList();
+        updateStats();
+    });
+    
+    db.ref('iovs').on('value', (snapshot) => {
+        iovsData = snapshot.val() || {};
+        
+        Object.keys(iovsData).forEach(iovId => {
+            const iov = iovsData[iovId];
+            
+            if (iov.lastSeen) {
+                const lastSeenTime = new Date(iov.lastSeen).getTime();
+                const now = Date.now();
+                const timeDiff = now - lastSeenTime;
+                iov.isOnline = timeDiff < 120000;
+                iov.lastSeenFormatted = new Date(iov.lastSeen).toLocaleString();
+            } else if (iov.hasOwnProperty('isOnline')) {
+                iov.isOnline = iov.isOnline;
+            } else if (iov.status) {
+                const statusLower = iov.status.toLowerCase();
+                iov.isOnline = statusLower === 'online' || statusLower === 'active' || statusLower === 'available';
+            } else {
+                iov.isOnline = true;
+            }
+        });
+        
+        updateIOVMarkers();
+        updateIOVList();
+        updateStats();
+        console.log(`🚗 IOVs loaded: ${Object.keys(iovsData).length}`);
+    });
+    
+    db.ref('cameras').on('value', (snapshot) => {
+        camerasData = snapshot.val() || {};
+        updateCameraMarkers();
+        updateStats();
+        console.log(`📹 Cameras loaded: ${Object.keys(camerasData).length}`);
+    });
+}
+
+// ========== HANDLE ACCEPTED ALERTS ==========
+function handleAcceptedAlert(alert, alertId) {
+    console.log(`🎯 Accepted alert detected: ${alertId}`);
+    
+    // Validate alert data
+    if (!alert || !alertId) {
+        console.warn('Invalid alert data provided');
+        return;
+    }
+    
+    // Get IoV position from alert (which IoV accepted it)
+    const iovId = alert.accepted_by_iov || alert.assigned_iov || alert.iov_id;
+    const alertLat = alert.location?.lat || alert.iov_location?.lat;
+    const alertLng = alert.location?.lng || alert.iov_location?.lng;
+    
+    if (!alertLat || !alertLng || isNaN(alertLat) || isNaN(alertLng)) {
+        console.warn('Invalid alert location for route tracking:', { alertLat, alertLng });
+        return;
+    }
+    
+    const alertPosition = { lat: parseFloat(alertLat), lng: parseFloat(alertLng) };
+    
+    // Find the IoV that accepted this alert
+    let assignedIOV = null;
+    
+    if (iovId && iovsData[iovId]) {
+        // Specific IoV assigned to this alert
+        const iov = iovsData[iovId];
+        if (iov.isOnline) {
+            const iovLat = iov.latitude || iov.lat;
+            const iovLng = iov.longitude || iov.lng;
+            
+            if (iovLat && iovLng) {
+                assignedIOV = {
+                    id: iovId,
+                    position: { lat: parseFloat(iovLat), lng: parseFloat(iovLng) },
+                    data: iov
+                };
+                console.log(`🚗 Assigned IoV found: ${iov.fullName || iovId}`);
+            }
+        }
+    }
+    
+    // If no specific IoV, find the nearest online IoV
+    if (!assignedIOV) {
+        let minDistance = Infinity;
+        
+        Object.keys(iovsData).forEach(iovId => {
+            const iov = iovsData[iovId];
+            if (iov.isOnline) {
+                const iovLat = iov.latitude || iov.lat;
+                const iovLng = iov.longitude || iov.lng;
+                
+                if (iovLat && iovLng) {
+                    const distance = calculateDistance(iovLat, iovLng, alertPosition.lat, alertPosition.lng);
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        assignedIOV = {
+                            id: iovId,
+                            position: { lat: parseFloat(iovLat), lng: parseFloat(iovLng) },
+                            data: iov
+                        };
+                    }
+                }
+            }
+        });
+    }
+    
+    if (assignedIOV) {
+        console.log(`🚗 IoV responding: ${assignedIOV.data.fullName || assignedIOV.id} (${calculateDistance(assignedIOV.position.lat, assignedIOV.position.lng, alertPosition.lat, alertPosition.lng).toFixed(1)} km away)`);
+        
+        // Get camera location for the route destination
+        const cameraPosition = getCameraLocationForAlert(alert);
+        
+        // Validate assignedIOV position
+        if (!assignedIOV || !assignedIOV.position || !assignedIOV.position.lat || !assignedIOV.position.lng) {
+            console.warn('Invalid IoV position for route tracking:', assignedIOV);
+            showNotification('⚠️ Invalid IoV position data', 'warning');
+            return;
+        }
+        
+        if (cameraPosition) {
+            // Draw route from IoV car to detection camera
+            startRouteTracking(alertId, assignedIOV.position, cameraPosition);
+            
+            // Update IoV status to "responding"
+            if (firebaseDb) {
+                firebaseDb.ref('iovs/' + assignedIOV.id).update({
+                    status: 'responding',
+                    current_alert: alertId,
+                    responding_to: alertId
+                });
+            }
+            
+            const distance = calculateDistance(assignedIOV.position.lat, assignedIOV.position.lng, cameraPosition.lat, cameraPosition.lng);
+            showNotification(`🚗 ${assignedIOV.data.fullName || 'IoV'} responding to camera location (${distance.toFixed(1)} km away)`, 'success');
+        } else {
+            // Fallback to alert location if camera not found
+            startRouteTracking(alertId, assignedIOV.position, alertPosition);
+            const distance = calculateDistance(assignedIOV.position.lat, assignedIOV.position.lng, alertPosition.lat, alertPosition.lng);
+            showNotification(`🚗 ${assignedIOV.data.fullName || 'IoV'} responding to alert location (${distance.toFixed(1)} km away)`, 'success');
+        }
+    } else {
+        console.warn('No online IoVs available for alert');
+        showNotification('⚠️ No online IoVs available for this alert', 'warning');
+    }
+}
+
+// ========== GET CAMERA LOCATION FOR ALERT ==========
+function getCameraLocationForAlert(alert) {
+    // Try to get camera ID from alert
+    const cameraId = alert.camera_id || alert.camera_name || alert.source_camera;
+    
+    if (cameraId && camerasData[cameraId]) {
+        const camera = camerasData[cameraId];
+        const camLat = camera.latitude || camera.lat;
+        const camLng = camera.longitude || camera.lng;
+        
+        if (camLat && camLng) {
+            console.log(`📹 Found camera location: ${camera.name || cameraId}`);
+            return { lat: parseFloat(camLat), lng: parseFloat(camLng) };
+        }
+    }
+    
+    // Try to match camera by name/location
+    const alertLocation = alert.location_name || alert.city || alert.Area;
+    if (alertLocation) {
+        for (const [camId, camera] of Object.entries(camerasData)) {
+            const camLocation = camera.city || camera.address;
+            if (camLocation && camLocation.toLowerCase().includes(alertLocation.toLowerCase())) {
+                const camLat = camera.latitude || camera.lat;
+                const camLng = camera.longitude || camera.lng;
+                
+                if (camLat && camLng) {
+                    console.log(`📹 Matched camera by location: ${camera.name || camId}`);
+                    return { lat: parseFloat(camLat), lng: parseFloat(camLng) };
+                }
+            }
+        }
+    }
+    
+    console.warn('Camera location not found for alert');
+    return null;
+}
+
+// ========== UPDATE THREAT MARKERS ==========
+function updateThreatMarkers() {
+    threatMarkers.forEach(marker => markerClusterGroup.removeLayer(marker));
+    threatMarkers = [];
+    
+    const activeThreats = allAlerts.filter(a => a.status !== 'resolved');
+    
+    activeThreats.forEach(threat => {
+        let lat = threat.location?.lat;
+        let lng = threat.location?.lng;
+        
+        if (!lat || !lng) {
+            const cityCoords = {
+                'Wazirabad': [32.45, 74.12],
+                'Gujranwala': [32.16, 74.19],
+                'Sialkot': [32.49, 74.53],
+                'Lahore': [31.52, 74.36],
+                'Islamabad': [33.68, 73.04]
+            };
+            const city = threat.city || threat.Area || 'Wazirabad';
+            const coords = cityCoords[city] || cityCoords['Wazirabad'];
+            lat = coords[0] + (Math.random() - 0.5) * 0.05;
+            lng = coords[1] + (Math.random() - 0.5) * 0.05;
+        }
+        
+        const weapon = threat.type || threat.weapon_class || threat.class || 'THREAT';
+        const priority = threat.priority || threat.threat_level || 'MEDIUM';
+        const priorityColor = priority === 'HIGH' ? '#ff4d6d' : priority === 'MEDIUM' ? '#ffc107' : '#00ff95';
+        
+        const threatIcon = getThreatIcon(priority);
+        const threatMarker = L.marker([lat, lng], { icon: threatIcon });
+        threatMarker.bindPopup(`
+            <div style="background:#1a1f2e; color:white; padding:10px; border-radius:12px; min-width:200px;">
+                <h5 style="color:#ff4d6d; margin-bottom:8px;">⚠️ ${weapon} DETECTED</h5>
+                <div><i class="fas fa-map-marker-alt"></i> ${threat.city || threat.Area || 'Unknown'}</div>
+                <div><i class="fas fa-flag"></i> Priority: <span style="color:${priorityColor}">${priority}</span></div>
+                <div><i class="fas fa-chart-line"></i> Confidence: ${(threat.confidence * 100).toFixed(1)}%</div>
+                <div><i class="fas fa-clock"></i> ${threat.datetime ? new Date(threat.datetime).toLocaleString() : 'Recent'}</div>
+                <div><i class="fas fa-video"></i> ${threat.camera_name || threat.camera_id || 'Unknown'}</div>
+                <hr style="margin:8px 0;">
+            </div>
+        `);
+        threatMarkers.push(threatMarker);
+        markerClusterGroup.addLayer(threatMarker);
+    });
+    
+    console.log(`⚠️ Threat markers updated: ${threatMarkers.length}`);
+}
+
+// ========== UPDATE IOV MARKERS ==========
+function updateIOVMarkers() {
+    iovMarkers.forEach(marker => markerClusterGroup.removeLayer(marker));
+    iovMarkers = [];
+    
+    Object.keys(iovsData).forEach(iovId => {
+        const iov = iovsData[iovId];
+        
+        // Only show IOVs that are online (real-time status)
+        if (!iov.isOnline) {
+            console.log(`Skipping offline IOV: ${iov.fullName || iov.name || iovId}`);
+            return;
+        }
+        
+        let lat = iov.latitude || iov.lat;
+        let lng = iov.longitude || iov.lng;
+        
+        if (!lat || !lng) {
+            const baseLat = 32.4 + (Math.random() - 0.5) * 0.5;
+            const baseLng = 74.1 + (Math.random() - 0.5) * 0.5;
+            lat = baseLat;
+            lng = baseLng;
+        }
+        
+        const iovMarker = L.marker([lat, lng], { icon: iovIcon });
+        const speed = iov.speed || Math.floor(Math.random() * 80) + 20;
+        const vehicleName = iov.fullName || iov.name || iov.vehicle_id || `IOV-${iovId.slice(-6)}`;
+        const carNumber = iov.carNumber || '';
+        
+        const isTracked = trackedVehicle && (
+            (carNumber && carNumber === trackedVehicle) ||
+            (iov.vehicle_id && iov.vehicle_id === trackedVehicle) ||
+            (vehicleName && vehicleName.includes(trackedVehicle))
+        );
+        
+        if (isTracked) {
+            iovMarker.setIcon(trackedIovIcon);
+            console.log(`🎯 Found tracked vehicle: ${trackedVehicle}`);
+        }
+        
+        iovMarker.bindPopup(`
+            <div style="background:#1a1f2e; color:white; padding:10px; border-radius:12px; min-width:200px;">
+                <h5 style="color:${isTracked ? '#ff4d6d' : '#00ff95'};">🚗 ${vehicleName}</h5>
+                ${isTracked ? '<div style="color:#ff4d6d; font-weight:bold; margin-bottom:5px;">📍 TRACKED VEHICLE</div>' : ''}
+                ${carNumber ? `<div><i class="fas fa-id-card"></i> Plate: <span style="color:#ffc107;">${carNumber}</span></div>` : ''}
+                <div><i class="fas fa-tachometer-alt"></i> Speed: ${speed} km/h</div>
+                <div><i class="fas fa-battery-full"></i> Status: <span style="color:#00ff95;">ONLINE</span></div>
+                <div><i class="fas fa-map-pin"></i> Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}</div>
+                <div><i class="fas fa-user"></i> Driver: ${iov.fullName || 'On Duty'}</div>
+                <div><i class="fas fa-building"></i> Station: ${iov.policeStation || 'N/A'}</div>
+                <hr style="margin:8px 0;">
+                <button onclick="viewIOVDetails('${iovId}')" style="background:#0dcaf0; border:none; padding:4px 12px; border-radius:20px; cursor:pointer;">View Details</button>
+            </div>
+        `);
+        iovMarkers.push(iovMarker);
+        markerClusterGroup.addLayer(iovMarker);
+        
+        if (isTracked) {
+            setTimeout(() => {
+                map.setView([lat, lng], 15);
+                iovMarker.openPopup();
+            }, 1000);
+        }
+    });
+    
+    console.log(`🚗 Active IOV markers updated: ${iovMarkers.length}`);
+}
+
+// ========== UPDATE CAMERA MARKERS ==========
+function updateCameraMarkers() {
+    cameraMarkers.forEach(marker => markerClusterGroup.removeLayer(marker));
+    cameraMarkers = [];
+    
+    Object.keys(camerasData).forEach(camId => {
+        const cam = camerasData[camId];
+        
+        // Use actual coordinates from Firebase if available
+        let lat = cam.latitude || cam.lat;
+        let lng = cam.longitude || cam.lng;
+        
+        // Fallback to hardcoded locations if no coordinates in Firebase
+        if (!lat || !lng) {
+            const cameraLocations = {
+                'CAM_WZD_001': [32.44, 74.12],
+                'CAM_WZD_002': [32.46, 74.14],
+                'CAM_GRW_001': [32.15, 74.18],
+                'CAM_GRW_002': [32.17, 74.21],
+                'CAM_SKT_001': [32.49, 74.53],
+                'CAM_LHR_001': [31.52, 74.36]
+            };
+            const fallbackCoords = cameraLocations[camId] || [32.4 + (Math.random() - 0.5) * 0.3, 74.1 + (Math.random() - 0.5) * 0.3];
+            lat = fallbackCoords[0];
+            lng = fallbackCoords[1];
+        }
+        
+        const cameraMarker = L.marker([lat, lng], { icon: cameraIcon });
+        const statusColor = cam.status === 'active' || cam.status === 'online' ? '#00ff95' : '#ff4d6d';
+        
+        cameraMarker.bindPopup(`
+            <div style="background:#1a1f2e; color:white; padding:10px; border-radius:12px; min-width:220px;">
+                <h5 style="color:#ffc107; margin-bottom:8px;">📹 ${cam.name || camId}</h5>
+                <div><i class="fas fa-id-card"></i> ID: <span style="color:#0dcaf0;">${cam.camera_id || camId}</span></div>
+                <div><i class="fas fa-map-marker-alt"></i> ${cam.address || cam.city || 'Unknown Location'}</div>
+                <div><i class="fas fa-city"></i> City: <span style="color:#0dcaf0;">${cam.city || 'N/A'}</span></div>
+                <div><i class="fas fa-video"></i> Type: ${cam.type || 'Fixed Camera'}</div>
+                <div><i class="fas fa-signal"></i> Status: <span style="color:${statusColor};">${cam.status || 'Unknown'}</span></div>
+                ${cam.installed_at ? `<div><i class="fas fa-calendar"></i> Installed: ${new Date(cam.installed_at).toLocaleDateString()}</div>` : ''}
+                <div><i class="fas fa-map-pin"></i> Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}</div>
+                <hr style="margin:8px 0;">
+                <button onclick="viewCameraFeed('${camId}')" style="background:#0dcaf0; border:none; padding:4px 12px; border-radius:20px; cursor:pointer;">View Feed</button>
+            </div>
+        `);
+        cameraMarkers.push(cameraMarker);
+        markerClusterGroup.addLayer(cameraMarker);
+    });
+    
+    // Add UAV locations
+    const uavLocations = [
+        { name: 'UAV-01', lat: 32.42, lng: 74.08 },
+        { name: 'UAV-02', lat: 32.18, lng: 74.22 },
+        { name: 'UAV-03', lat: 32.38, lng: 74.28 },
+        { name: 'UAV-04', lat: 32.52, lng: 74.48 }
+    ];
+    
+    uavLocations.forEach(uav => {
+        const uavMarker = L.marker([uav.lat, uav.lng], { icon: uavIcon });
+        uavMarker.bindPopup(`<div><strong>🚁 ${uav.name}</strong><br>Patrol Mode: ACTIVE<br>Altitude: ${Math.floor(Math.random() * 200) + 100}m</div>`);
+        uavMarkers.push(uavMarker);
+        markerClusterGroup.addLayer(uavMarker);
+    });
+    
+    // Count only actual cameras, not UAVs
+    const actualCameraCount = Object.keys(camerasData).length;
+    const uavCount = uavLocations.length;
+    document.getElementById('cameraCount').innerText = actualCameraCount;
+    console.log(`📹 Camera markers updated: ${actualCameraCount} cameras + ${uavCount} UAVs`);
+}
+
+// ========== UPDATE THREAT LIST PANEL ==========
+function updateThreatList() {
+    const container = document.getElementById('threatList');
+    const activeThreats = allAlerts.filter(a => a.status !== 'resolved').slice(0, 5);
+    
+    if (activeThreats.length === 0) {
+        container.innerHTML = '<div style="text-align:center; color:#aaa;">No active threats</div>';
+        return;
+    }
+    
+    container.innerHTML = '';
+    activeThreats.forEach(threat => {
+        const weapon = threat.type || threat.weapon_class || threat.class || 'THREAT';
+        const location = threat.city || threat.Area || 'Unknown';
+        const priority = threat.priority || 'MEDIUM';
+        const div = document.createElement('div');
+        div.className = 'threat-item';
+        div.innerHTML = `
+            <div><strong>${weapon}</strong> <span style="color:#ff4d6d;">● ${priority}</span></div>
+            <div><small>📍 ${location}</small></div>
+            <div><small>🕒 ${threat.datetime ? new Date(threat.datetime).toLocaleTimeString() : 'Now'}</small></div>
+        `;
+        container.appendChild(div);
+    });
+}
+
+// ========== UPDATE IOV LIST PANEL ==========
+function updateIOVList() {
+    const container = document.getElementById('iovList');
+    
+    // Get only online IOVs (real-time status)
+    const activeIOVs = [];
+    Object.keys(iovsData).forEach(iovId => {
+        const iov = iovsData[iovId];
+        if (iov.isOnline) {
+            activeIOVs.push({ id: iovId, ...iov });
+        }
+    });
+    
+    const iovArray = activeIOVs.slice(0, 5);
+    
+    if (iovArray.length === 0) {
+        container.innerHTML = '<div style="text-align:center; color:#aaa;">No active IOVs</div>';
+        return;
+    }
+    
+    container.innerHTML = '';
+    iovArray.forEach(iov => {
+        const div = document.createElement('div');
+        div.className = 'iov-item';
+        div.innerHTML = `
+            <div><strong>${iov.fullName || iov.name || iov.vehicle_id || iov.id.slice(-6)}</strong> <span style="color:#00ff95;">●</span></div>
+            <div><small>📡 ONLINE | ${iov.speed || '--'} km/h</small></div>
+        `;
+        container.appendChild(div);
+    });
+    
+    console.log(`📋 IOV List updated: ${iovArray.length} active IOVs shown`);
+}
+
+// ========== UPDATE STATS ==========
+function updateStats() {
+    const activeThreats = allAlerts.filter(a => a.status !== 'resolved').length;
+    
+    let activeIOVCount = 0;
+    Object.keys(iovsData).forEach(iovId => {
+        const iov = iovsData[iovId];
+        if (iov.isOnline) {
+            activeIOVCount++;
+        }
+    });
+    
+    document.getElementById('alertCount').innerText = allAlerts.length;
+    document.getElementById('threatCount').innerText = activeThreats;
+    document.getElementById('iovCount').innerText = activeIOVCount;
+    document.getElementById('uavCount').innerText = '4'; // Static UAV count as defined in updateCameraMarkers
+    
+    console.log(`📊 Stats updated: ${activeIOVCount} active IOVs, ${activeThreats} threats`);
+}
+
+// ========== VIEW ALERT DETAILS ==========
+function viewAlertDetails(alertId) {
+    const alert = allAlerts.find(a => a.id === alertId);
+    if (alert) {
+        alert(`🔍 INCIDENT DETAILS\n\nType: ${alert.type || alert.weapon_class}\nLocation: ${alert.city || alert.Area}\nPriority: ${alert.priority}\nConfidence: ${(alert.confidence * 100).toFixed(1)}%\nTime: ${alert.datetime || 'Recent'}\nCamera: ${alert.camera_name || alert.camera_id}`);
+    }
+}
+
+// ========== VIEW IOV DETAILS ==========
+function viewIOVDetails(iovId) {
+    const iov = iovsData[iovId];
+    if (iov) {
+        alert(`🚗 IOV DETAILS\n\n` +
+              `━━━━━━━━━━━━━━━━━━━━\n` +
+              `ID: ${iovId}\n` +
+              `Name: ${iov.fullName || iov.name || iov.vehicle_id || 'N/A'}\n` +
+              `Status: ${(iov.status || 'active').toUpperCase()}\n` +
+              `Speed: ${iov.speed || 0} km/h\n` +
+              `Driver: ${iov.fullName || 'On Duty'}\n` +
+              `Location: ${iov.latitude || iov.lat || 'N/A'}, ${iov.longitude || iov.lng || 'N/A'}\n` +
+              `━━━━━━━━━━━━━━━━━━━━`);
+    } else {
+        alert('IOV details not found');
+    }
+}
+
+// ========== ROUTE TRACKING FUNCTIONS ==========
+function drawRouteLine(startPos, endPos, alertId, routeColor = '#00ff95') {
+    // Remove existing route for this alert
+    if (activeRoutes.has(alertId)) {
+        const existingRoute = activeRoutes.get(alertId);
+        if (existingRoute.line) {
+            map.removeLayer(existingRoute.line);
+        }
+        if (existingRoute.distanceMarker) {
+            map.removeLayer(existingRoute.distanceMarker);
+        }
+    }
+
+    // Create route line from IoV to Camera
+    const routeCoords = [startPos, endPos];
+    
+    const routeLine = L.polyline(routeCoords, {
+        color: routeColor,
+        weight: 5,
+        opacity: 0.9,
+        dashArray: '15, 10',
+        className: 'animated-route-line'
+    }).addTo(map);
+
+    // Calculate distance
+    const distance = calculateDistance(startPos.lat, startPos.lng, endPos.lat, endPos.lng);
+    
+    // Add route info marker at midpoint
+    const midPoint = {
+        lat: (startPos.lat + endPos.lat) / 2,
+        lng: (startPos.lng + endPos.lng) / 2
+    };
+
+    const routeIcon = L.divIcon({
+        html: `<div style="background: linear-gradient(135deg, rgba(0,255,149,0.95), rgba(0,204,102,0.95)); color: black; padding: 6px 12px; border-radius: 15px; font-size: 12px; font-weight: bold; border: 2px solid #00ff95; box-shadow: 0 4px 15px rgba(0,255,149,0.4);">
+                � → 📹 ${distance.toFixed(1)} km
+               </div>`,
+        className: 'route-info-marker',
+        iconSize: [120, 35],
+        iconAnchor: [60, 17]
+    });
+
+    const routeInfoMarker = L.marker(midPoint, { icon: routeIcon }).addTo(map);
+
+    // Store route data
+    activeRoutes.set(alertId, {
+        line: routeLine,
+        distanceMarker: routeInfoMarker,
+        distance: distance,
+        start: startPos,
+        end: endPos,
+        color: routeColor
+    });
+
+    console.log(`🛣️ IoV-to-Camera route drawn: ${distance.toFixed(1)} km for alert ${alertId}`);
+}
+
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Earth's radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+
+function startRouteTracking(alertId, iovPosition, alertPosition) {
+    currentIOVPosition = iovPosition;
+    targetAlertPosition = alertPosition;
+
+    // Draw initial route
+    drawRouteLine(iovPosition, alertPosition, alertId);
+
+    // Start real-time updates
+    if (routeUpdateInterval) {
+        clearInterval(routeUpdateInterval);
+    }
+
+    routeUpdateInterval = setInterval(() => {
+        updateRouteTracking(alertId);
+    }, 3000); // Update every 3 seconds
+
+    // Show tracking notification
+    showTrackingNotification(alertId);
+}
+
+function updateRouteTracking(alertId) {
+    // Simulate IoV movement towards target
+    if (!currentIOVPosition || !targetAlertPosition) return;
+
+    // Calculate movement (simulate IoV getting closer)
+    const step = 0.002; // Movement step size
+    const newLat = currentIOVPosition.lat + (targetAlertPosition.lat - currentIOVPosition.lat) * step;
+    const newLng = currentIOVPosition.lng + (targetAlertPosition.lng - currentIOVPosition.lng) * step;
+
+    currentIOVPosition = { lat: newLat, lng: newLng };
+
+    // Update route line
+    drawRouteLine(currentIOVPosition, targetAlertPosition, alertId);
+
+    // Update IoV marker position
+    updateIOVMarkerPosition(currentIOVPosition);
+
+    // Check if reached destination
+    const distance = calculateDistance(currentIOVPosition.lat, currentIOVPosition.lng, 
+                                     targetAlertPosition.lat, targetAlertPosition.lng);
+    
+    if (distance < 0.1) { // Within 100 meters
+        completeRouteTracking(alertId);
+    }
+}
+
+function updateIOVMarkerPosition(position) {
+    // Find and update the tracked IoV marker
+    iovMarkers.forEach(marker => {
+        const markerPos = marker.getLatLng();
+        if (Math.abs(markerPos.lat - position.lat) < 0.01 && 
+            Math.abs(markerPos.lng - position.lng) < 0.01) {
+            marker.setLatLng(position);
+            marker.setIcon(trackedIovIcon);
+        }
+    });
+}
+
+function completeRouteTracking(alertId) {
+    if (routeUpdateInterval) {
+        clearInterval(routeUpdateInterval);
+        routeUpdateInterval = null;
+    }
+
+    // Show completion notification
+    const route = activeRoutes.get(alertId);
+    if (route) {
+        // Change route color to indicate completion
+        route.line.setStyle({ color: '#00ff95', dashArray: null, weight: 6 });
+        
+        // Update route info marker to show arrival
+        route.distanceMarker.setIcon(L.divIcon({
+            html: `<div style="background: linear-gradient(135deg, rgba(0,255,149,0.95), rgba(0,204,102,0.95)); color: black; padding: 6px 12px; border-radius: 15px; font-size: 12px; font-weight: bold; border: 2px solid #00ff95; box-shadow: 0 4px 15px rgba(0,255,149,0.4);">
+                    ✅ ARRIVED AT CAMERA
+                   </div>`,
+            className: 'route-completion-marker',
+            iconSize: [140, 35],
+            iconAnchor: [70, 17]
+        }));
+    }
+
+    showNotification('🎯 IoV arrived at camera location! Response complete.', 'success');
+    console.log(`✅ IoV-to-Camera route completed for alert ${alertId}`);
+}
+
+function showTrackingNotification(alertId) {
+    const route = activeRoutes.get(alertId);
+    if (route) {
+        showNotification(`🚗 Route tracking active - ${route.distance.toFixed(1)} km to target`, 'info');
+    }
+}
+
+function clearAllRoutes() {
+    activeRoutes.forEach((route, alertId) => {
+        if (route.line) map.removeLayer(route.line);
+        if (route.distanceMarker) map.removeLayer(route.distanceMarker);
+    });
+    activeRoutes.clear();
+    routeLines = [];
+    
+    if (routeUpdateInterval) {
+        clearInterval(routeUpdateInterval);
+        routeUpdateInterval = null;
+    }
+}
+
+// ========== URL PARAMETER HANDLING ==========
+function handleURLParameters() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const alertId = urlParams.get('alert');
+    const lat = parseFloat(urlParams.get('lat'));
+    const lng = parseFloat(urlParams.get('lng'));
+    const tracking = urlParams.get('tracking') === 'true';
+
+    if (alertId && lat && lng) {
+        // Focus on alert location
+        map.setView([lat, lng], 15);
+        
+        if (tracking) {
+            // Start route tracking after a delay to allow IoV data to load
+            setTimeout(() => {
+                const firstIOV = Object.keys(iovsData)[0];
+                if (firstIOV && iovsData[firstIOV]) {
+                    const iov = iovsData[firstIOV];
+                    const iovPos = {
+                        lat: iov.latitude || iov.lat || 32.5,
+                        lng: iov.longitude || iov.lng || 74.2
+                    };
+                    const alertPos = { lat, lng };
+                    startRouteTracking(alertId, iovPos, alertPos);
+                }
+            }, 2000);
+        }
+    }
+}
+
+// ========== LOAD DEMO DATA ==========
+function loadDemoData() {
+    console.log('📀 Loading demo data...');
+    allAlerts = [
+        { id: 'demo1', type: 'KNIFE', city: 'Wazirabad', priority: 'HIGH', confidence: 0.94, datetime: new Date().toISOString(), status: 'active', location: { lat: 32.45, lng: 74.12 } },
+        { id: 'demo2', type: 'GUN', city: 'Gujranwala', priority: 'HIGH', confidence: 0.98, datetime: new Date(Date.now() - 300000).toISOString(), status: 'active', location: { lat: 32.16, lng: 74.19 } },
+        { id: 'demo3', type: 'FIGHT', city: 'Sialkot', priority: 'MEDIUM', confidence: 0.87, datetime: new Date(Date.now() - 600000).toISOString(), status: 'active', location: { lat: 32.49, lng: 74.53 } }
+    ];
+    
+    // Demo IOVs with real-time online status and actual coordinates
+    iovsData = {
+        'iov1': { 
+            fullName: 'Ahmed Hassan', 
+            status: 'online', 
+            speed: 65, 
+            lat: 32.45, 
+            lng: 74.12, 
+            carNumber: 'LE-1234',
+            lastSeen: new Date().toISOString(),
+            isOnline: true
+        },
+        'iov2': { 
+            fullName: 'Raza', 
+            status: 'online', 
+            speed: 42, 
+            lat: 32.16, 
+            lng: 74.19, 
+            carNumber: '5121',
+            lastSeen: new Date(Date.now() - 5000).toISOString(),
+            isOnline: true
+        },
+        'iov3': { 
+            fullName: 'Sara Khan', 
+            status: 'offline', 
+            speed: 0, 
+            lat: 32.49, 
+            lng: 74.53, 
+            carNumber: 'GRW-7890',
+            lastSeen: new Date(Date.now() - 3600000).toISOString(),
+            isOnline: false
+        },
+        'iov4': { 
+            fullName: 'Usman Chaudhry', 
+            status: 'online', 
+            speed: 55, 
+            lat: 31.52, 
+            lng: 74.36, 
+            carNumber: 'SKT-1122',
+            lastSeen: new Date().toISOString(),
+            isOnline: true
+        }
+    };
+    
+    camerasData = {
+        'CAM_CANTT_001': { 
+            name: 'Cantt gate Security Camera', 
+            camera_id: 'CAM_CANTT_001',
+            address: 'Rahwali, Gujranwala',
+            city: 'Gujranwala',
+            latitude: 32.24487,
+            longitude: 74.163715,
+            type: 'Laptop Camera', 
+            status: 'active',
+            installed_at: '2026-03-31'
+        },
+        'CAM_WZD_001': { 
+            name: 'Wazirabad Main', 
+            camera_id: 'CAM_WZD_001',
+            address: 'Main Bazaar, Wazirabad',
+            city: 'Wazirabad',
+            latitude: 32.44,
+            longitude: 74.12,
+            type: 'AI Camera', 
+            status: 'active',
+            installed_at: '2026-03-25'
+        },
+        'CAM_GRW_001': { 
+            name: 'Gujranwala Station', 
+            camera_id: 'CAM_GRW_001',
+            address: 'Railway Station, Gujranwala',
+            city: 'Gujranwala',
+            latitude: 32.15,
+            longitude: 74.18,
+            type: 'AI Camera', 
+            status: 'active',
+            installed_at: '2026-03-20'
+        }
+    };
+    updateThreatMarkers();
+    updateIOVMarkers();
+    updateCameraMarkers();
+    updateThreatList();
+    updateIOVList();
+    updateStats();
+}
+
+// ========== VIEW CAMERA FEED ==========
+function viewCameraFeed(cameraId) {
+    const cam = camerasData[cameraId];
+    if (cam) {
+        // Open camera feed in new window or modal
+        window.open(`/video_feed/${cameraId.replace('CAM_', '')}`, '_blank', 'width=800,height=600');
+    } else {
+        alert('Camera feed not available');
+    }
+}
+
+// ========== UTILITIES ==========
+
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 100px;
+        right: 20px;
+        padding: 12px 20px;
+        border-radius: 10px;
+        color: white;
+        font-weight: 600;
+        z-index: 10000;
+        animation: slideInRight 0.3s ease-out;
+        max-width: 300px;
+    `;
+    
+    const colors = {
+        success: 'rgba(0,255,149,0.95)',
+        danger: 'rgba(255,77,109,0.95)',
+        warning: 'rgba(255,193,7,0.95)',
+        info: 'rgba(13,202,240,0.95)'
+    };
+    
+    notification.style.background = colors[type] || colors.info;
+    notification.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-triangle' : type === 'warning' ? 'exclamation-circle' : 'info-circle'}"></i> ${message}`;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.animation = 'slideOutRight 0.3s ease-out';
+        setTimeout(() => notification.remove(), 300);
+    }, 4000);
+}
+
+// Add CSS animations
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideInRight {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes slideOutRight {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100%); opacity: 0; }
+    }
+    .animated-route-line {
+        animation: dashAnimation 2s linear infinite;
+    }
+    @keyframes dashAnimation {
+        to { stroke-dashoffset: -20; }
+    }
+`;
+document.head.appendChild(style);
+
+// ========== INITIALIZATION ==========
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🗺️ Initializing SKYWATCH Map Interface...');
+    initMap();
+    initFirebase();
+});
+
+// ========== INITIALIZE ==========
+document.addEventListener('DOMContentLoaded', () => {
+    const vehicleParam = getUrlParameter('vehicle');
+    if (vehicleParam) {
+        trackedVehicle = decodeURIComponent(vehicleParam);
+        console.log(`🎯 Tracking vehicle: ${trackedVehicle}`);
+        
+        const navbarTitle = document.querySelector('nav h3');
+        navbarTitle.innerHTML = `
+            <i class="fas fa-satellite-dish"></i> SKYWATCH | IOV Geospatial Intel
+            <span style="color:#ff4d6d; margin-left:10px;">🎯 Tracking: ${trackedVehicle}</span>
+            <span id="firebaseStatus" class="firebase-status">
+                <span class="live-badge" style="background: #ff4d6d;"></span>
+                <span id="statusText">Connecting...</span>
+            </span>
+        `;
+    }
+    
+    initMap();
+    setTimeout(() => {
+        initFirebase();
+    }, 500);
+});
+</script>
+</body>
+</html>

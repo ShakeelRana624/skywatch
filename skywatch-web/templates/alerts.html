@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SKYWATCH | Real-Time Threat Dashboard</title>
+    
+    <!-- Bootstrap & Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;900&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #0dcaf0;
+            --danger: #ff4d6d;
+            --warning: #ffc107;
+            --success: #00ff95;
+            --dark-bg: #050814;
+        }
+        body {
+            font-family: 'Exo 2', sans-serif;
+            background: var(--dark-bg);
+            color: #fff;
+            height: 100vh;
+            overflow: hidden;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 20% 50%, rgba(13,202,240,0.1) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 80%, rgba(255,77,109,0.1) 0%, transparent 50%);
+            animation: pulseBg 8s ease-in-out infinite;
+            z-index: -2;
+        }
+        .grid-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: linear-gradient(rgba(13,202,240,0.08) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(13,202,240,0.08) 1px, transparent 1px);
+            background-size: 40px 40px;
+            z-index: -1;
+            animation: gridMove 20s linear infinite;
+        }
+        @keyframes pulseBg { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
+        @keyframes gridMove { 0% { transform: translateY(0); } 100% { transform: translateY(40px); } }
+        
+        .navbar {
+            background: rgba(10,20,40,0.85);
+            backdrop-filter: blur(20px);
+            border-bottom: 2px solid var(--primary);
+            padding: 12px 30px;
+            margin: 15px 20px;
+            border-radius: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .navbar h2 {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            background: linear-gradient(135deg, #fff, var(--primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin: 0;
+        }
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(0,0,0,0.3);
+            padding: 8px 20px;
+            border-radius: 30px;
+            border: 1px solid rgba(13,202,240,0.3);
+        }
+        .live-dot {
+            width: 12px;
+            height: 12px;
+            background: var(--success);
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+        .firebase-status {
+            background: rgba(13,202,240,0.2);
+            padding: 6px 18px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0 20px 15px 20px;
+        }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 var(--success); } 70% { box-shadow: 0 0 0 10px rgba(0,255,149,0); } 100% { box-shadow: 0 0 0 0 rgba(0,255,149,0); } }
+        
+        .dashboard {
+            height: calc(100vh - 100px);
+            padding: 0 20px 20px;
+            display: flex;
+            gap: 20px;
+        }
+        .alerts-panel {
+            flex: 3;
+            background: rgba(10,20,40,0.6);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            border: 1px solid rgba(13,202,240,0.2);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .panel-header {
+            padding: 18px 25px;
+            background: linear-gradient(90deg, rgba(255,77,109,0.2), rgba(13,202,240,0.2));
+            border-bottom: 2px solid var(--danger);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .panel-header h3 {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            margin: 0;
+        }
+        .alert-count {
+            background: var(--danger);
+            padding: 5px 15px;
+            border-radius: 30px;
+            font-weight: 700;
+            font-size: 1.2rem;
+        }
+        .alert-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .alert-card {
+            background: rgba(26,35,58,0.9);
+            border-left: 6px solid;
+            border-radius: 12px;
+            padding: 16px 20px;
+            transition: all 0.3s ease;
+            animation: slideIn 0.3s ease-out;
+        }
+        .alert-card:hover { transform: translateX(5px); }
+        .alert-card.new-alert { animation: alertFlash 1s ease-out; }
+        @keyframes alertFlash { 0%,100% { background: rgba(255,77,109,0.2); } 50% { background: rgba(255,77,109,0.4); } }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+        
+        .alert-critical { border-left-color: var(--danger); }
+        .alert-warning { border-left-color: var(--warning); }
+        .alert-info { border-left-color: var(--primary); }
+        
+        .alert-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .alert-type {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 600;
+        }
+        .alert-icon {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.1);
+        }
+        .alert-critical .alert-icon { color: var(--danger); }
+        .alert-warning .alert-icon { color: var(--warning); }
+        .alert-info .alert-icon { color: var(--primary); }
+        
+        .alert-time {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.8rem;
+            background: rgba(0,0,0,0.3);
+            padding: 4px 12px;
+            border-radius: 20px;
+        }
+        .alert-message {
+            font-size: 1rem;
+            font-weight: 500;
+            margin-bottom: 8px;
+            padding-left: 42px;
+        }
+        .alert-details {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            padding-left: 42px;
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.7);
+        }
+        .alert-thumbnail {
+            margin-top: 12px;
+            margin-left: 42px;
+        }
+        .alert-thumbnail img {
+            max-width: 180px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .alert-thumbnail img:hover { transform: scale(1.05); }
+        
+        .alert-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+            margin-left: 42px;
+        }
+        
+        .btn-accept-iov, .btn-view-map {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .btn-accept-iov {
+            background: linear-gradient(135deg, #00ff95, #00cc66);
+            color: #000;
+        }
+        
+        .btn-accept-iov:hover:not(:disabled) {
+            background: linear-gradient(135deg, #00e685, #00b859);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,255,149,0.4);
+        }
+        
+        .btn-accept-iov:disabled {
+            background: #555;
+            color: #999;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        
+        .btn-view-map {
+            background: linear-gradient(135deg, #0dcaf0, #0a58ca);
+            color: #fff;
+        }
+        
+        .btn-view-map:hover {
+            background: linear-gradient(135deg, #0bb8e8, #0948b8);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(13,202,240,0.4);
+        }
+        
+        .side-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            min-width: 320px;
+        }
+        .stats-card, .persons-list {
+            background: rgba(10,20,40,0.6);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            border: 1px solid rgba(13,202,240,0.2);
+            padding: 20px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-top: 15px;
+        }
+        .stat-item {
+            background: rgba(13,202,240,0.1);
+            border-radius: 12px;
+            padding: 12px;
+            text-align: center;
+        }
+        .stat-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        .persons-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+        .person-item {
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .person-item.danger {
+            background: rgba(255,77,109,0.15);
+            border-left: 3px solid var(--danger);
+        }
+        .person-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), #0a58ca);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 30px;
+            color: rgba(255,255,255,0.5);
+        }
+        .notification {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            padding: 12px 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            z-index: 9999;
+            animation: slideInRight 0.3s ease-out;
+        }
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideOutRight {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
+        .status-badge-sm { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+        .status-danger { background: #ff4d6d; box-shadow: 0 0 8px #ff4d6d; }
+        .status-safe { background: #00ff95; box-shadow: 0 0 8px #00ff95; }
+
+        /* Navigation Bar Styles - Same as dash.html */
+        .navbar {
+            background: linear-gradient(90deg, rgba(13, 202, 240, 0.1), rgba(10, 88, 202, 0.1));
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(13, 202, 240, 0.2);
+            border-radius: 20px;
+            padding: 12px 25px;
+            margin: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            animation: slideDown 0.8s ease-out forwards;
+        }
+
+        .navbar h3 {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 900;
+            letter-spacing: 2px;
+            color: #fff;
+            text-shadow: 0 0 10px var(--primary);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.2rem;
+        }
+
+        .firebase-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            background: rgba(0,0,0,0.5);
+            margin-left: 10px;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .nav-btn {
+            background: rgba(13, 202, 240, 0.1);
+            border: 1px solid rgba(13, 202, 240, 0.3);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .nav-btn:hover {
+            background: rgba(13, 202, 240, 0.2);
+            border-color: rgba(13, 202, 240, 0.5);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(13, 202, 240, 0.3);
+            color: #fff;
+            text-decoration: none;
+        }
+
+        .nav-badge {
+            background: #ff4d6d;
+            color: #fff;
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 10px;
+            min-width: 18px;
+            text-align: center;
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            font-weight: 700;
+        }
+
+        .logout-btn {
+            background: rgba(255, 77, 109, 0.1);
+            border-color: rgba(255, 77, 109, 0.3);
+        }
+
+        .logout-btn:hover {
+            background: rgba(255, 77, 109, 0.2);
+            border-color: rgba(255, 77, 109, 0.5);
+            box-shadow: 0 5px 15px rgba(255, 77, 109, 0.3);
+        }
+
+        @keyframes slideDown {
+            from { transform: translateY(-100px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="grid-overlay"></div>
+
+    <nav class="navbar">
+        <h3>
+            <i class="fas fa-satellite-dish"></i> SKYWATCH Live Monitoring
+            <span id="firebaseStatus" class="firebase-status">
+                <span class="status-indicator" style="background: #ff4d6d;"></span>
+                Connecting...
+            </span>
+        </h3>
+        <div class="nav-buttons">
+            <a href="/dash" class="nav-btn">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </a>
+            <a href="/alerts" class="nav-btn" style="background: rgba(13, 202, 240, 0.2); border-color: rgba(13, 202, 240, 0.5);">
+                <i class="fas fa-bell"></i> Alerts
+                <span class="nav-badge" id="alertCount">0</span>
+            </a>
+            <a href="/logs" class="nav-btn">
+                <i class="fas fa-history"></i> Logs
+                <span class="nav-badge" id="logCount">0</span>
+            </a>
+            <a href="/map" class="nav-btn">
+                <i class="fas fa-map-marked-alt"></i> Maps
+            </a>
+            <a href="/profile" class="nav-btn">
+                <i class="fas fa-user-shield"></i> Profile
+            </a>
+            <a href="/logout" class="nav-btn logout-btn">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </div>
+    </nav>
+
+    <div class="firebase-status" id="firebaseStatus">
+        <i class="fas fa-database"></i>
+        <span id="statusText">Connecting to ...</span>
+    </div>
+
+    <div class="dashboard">
+        <div class="alerts-panel">
+            <div class="panel-header">
+                <h3><i class="fas fa-exclamation-triangle" style="color: var(--danger);"></i> REAL-TIME THREAT ALERTS</h3>
+                <span class="alert-count" id="alertCount">0</span>
+            </div>
+            <div class="alert-container" id="alertContainer">
+                <div class="empty-state"><i class="fas fa-shield-alt fa-4x mb-3"></i><h4>Loading Alerts...</h4><p>Connecting to Firebase Database</p></div>
+            </div>
+        </div>
+
+        <div class="side-panel">
+            <div class="stats-card">
+                <h4><i class="fas fa-chart-line" style="color: var(--primary);"></i> SYSTEM STATS</h4>
+                <div class="stats-grid">
+                    <div class="stat-item"><div class="stat-value" id="totalAlerts">0</div><div>Total Alerts</div></div>
+                    <div class="stat-item"><div class="stat-value" id="criticalCount">0</div><div>Critical</div></div>
+                    <div class="stat-item"><div class="stat-value" id="warningCount">0</div><div>High/Med</div></div>
+                    <div class="stat-item"><div class="stat-value" id="infoCount">0</div><div>Low/Info</div></div>
+                </div>
+            </div>
+
+            <div class="persons-list">
+                <h4><i class="fas fa-users" style="color: var(--primary);"></i> ACTIVE THREATS BY LOCATION</h4>
+                <div id="personList"><div class="empty-state"><i class="fas fa-map-marker-alt fa-3x mb-2"></i><p>Loading location data...</p></div></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========== FIREBASE CONFIG ==========
+        const FIREBASE_CONFIG = {
+            apiKey: "AIzaSyBo38muJcR0_gYFKz9gJ1BQEC1twgHy2tE",
+            authDomain: "fypiov.firebaseapp.com",
+            databaseURL: "https://fypiov-default-rtdb.firebaseio.com",
+            projectId: "fypiov",
+            storageBucket: "fypiov.firebasestorage.app",
+            messagingSenderId: "1022795874212",
+            appId: "1:1022795874212:web:1fd40b8bbe7849fd3acb31"
+        };
+
+        let firebaseApp = null, firebaseDb = null, alertsRef = null;
+        let currentAlerts = [];
+        let locationStats = {};
+
+        // Initialize Firebase
+        function initFirebase() {
+            try {
+                firebaseApp = firebase.initializeApp(FIREBASE_CONFIG);
+                firebaseDb = firebase.database(firebaseApp);
+                alertsRef = firebaseDb.ref('/alerts');
+                
+                setupAlertListener();
+                updateFirebaseStatus(true, 'Connected to Firebase');
+                showNotification('Firebase Connected', 'success');
+            } catch (error) {
+                console.error('Firebase error:', error);
+                updateFirebaseStatus(false, 'Connection Failed');
+                showNotification('Firebase Connection Failed', 'danger');
+                startDemoMode();
+            }
+        }
+
+        // Main Alert Listener - Aapke exact structure ke mutabiq
+        function setupAlertListener() {
+            alertsRef.on('child_added', (snapshot) => {
+                const data = snapshot.val();
+                const alert = mapAlertData(data, snapshot.key);
+                currentAlerts.unshift(alert);
+                if (currentAlerts.length > 100) currentAlerts.pop();
+                
+                updateAlertsUI(currentAlerts);
+                updateStats(currentAlerts);
+                updateLocationStats(currentAlerts);
+                
+                // Critical alert notification
+                if (alert.threatLevel === 'CRITICAL' || alert.priority === 'HIGH' || alert.threat_level === 'HIGH') {
+                    showNotification(`🔴 CRITICAL: ${alert.weapon} detected at ${alert.location}`, 'danger');
+                    playAlertSound();
+                } else if (alert.priority === 'MEDIUM' || alert.threat_level === 'MEDIUM') {
+                    showNotification(`🟡 ALERT: ${alert.weapon} at ${alert.location}`, 'warning');
+                }
+            });
+            
+            alertsRef.on('child_changed', (snapshot) => {
+                const data = snapshot.val();
+                const updatedAlert = mapAlertData(data, snapshot.key);
+                const index = currentAlerts.findIndex(a => a.id === updatedAlert.id);
+                if (index !== -1) {
+                    currentAlerts[index] = updatedAlert;
+                    updateAlertsUI(currentAlerts);
+                    updateStats(currentAlerts);
+                    updateLocationStats(currentAlerts);
+                }
+            });
+            
+            alertsRef.once('value', (snapshot) => {
+                const alerts = [];
+                snapshot.forEach((child) => {
+                    alerts.push(mapAlertData(child.val(), child.key));
+                });
+                alerts.sort((a, b) => b.timestamp_num - a.timestamp_num);
+                currentAlerts = alerts;
+                updateAlertsUI(currentAlerts);
+                updateStats(currentAlerts);
+                updateLocationStats(currentAlerts);
+            });
+        }
+
+        // Important: Aapke data structure ko UI ke liye map kar raha hoon
+        function mapAlertData(data, key) {
+            // Threat level mapping
+            let uiType = 'INFO';
+            const threatLevel = data.threat_level || data.priority || 'MEDIUM';
+            if (threatLevel === 'CRITICAL' || threatLevel === 'HIGH') uiType = 'CRITICAL';
+            else if (threatLevel === 'MEDIUM') uiType = 'WARNING';
+            else uiType = 'INFO';
+            
+            // Message format
+            const weapon = data.type || data.weapon_class || 'Unknown';
+            const location = data.location_name || 'Unknown Location';
+            const message = `${weapon} threat detected at ${location}`;
+            
+            return {
+                id: key,
+                message: message,
+                timestamp: data.time || new Date(data.timestamp).toLocaleTimeString(),
+                timestamp_num: data.timestamp || 0,
+                type: uiType,
+                threatLevel: threatLevel,
+                weapon: weapon,
+                location: location,
+                lat: data.location?.lat,
+                lng: data.location?.lng,
+                video_thumbnail: data.video_thumbnail,
+                video_url: data.video_url,
+                priority: data.priority,
+                status: data.status,
+                total_iovs_notified: data.total_iovs_notified || 0,
+                rawData: data
+            };
+        }
+
+        // Update Alerts UI with Thumbnails
+        function updateAlertsUI(alerts) {
+            const container = document.getElementById('alertContainer');
+            const countElement = document.getElementById('alertCount');
+            
+            if (!alerts || alerts.length === 0) {
+                container.innerHTML = `<div class="empty-state"><i class="fas fa-shield-alt fa-4x mb-3"></i><h4>No Active Threats</h4><p>System is monitoring normally</p></div>`;
+                countElement.textContent = '0';
+                return;
+            }
+            
+            let html = '';
+            alerts.slice(0, 50).forEach(alert => {
+                const typeClass = alert.type === 'CRITICAL' ? 'alert-critical' : 
+                                 alert.type === 'WARNING' ? 'alert-warning' : 'alert-info';
+                const icon = alert.type === 'CRITICAL' ? 'fa-skull-crossbones' : 
+                            alert.type === 'WARNING' ? 'fa-exclamation-triangle' : 'fa-info-circle';
+                
+                html += `<div class="alert-card ${typeClass}" data-id="${alert.id}">
+                            <div class="alert-header">
+                                <div class="alert-type">
+                                    <div class="alert-icon"><i class="fas ${icon}"></i></div>
+                                    <span>${alert.type}</span>
+                                </div>
+                                <span class="alert-time"><i class="far fa-clock"></i> ${alert.timestamp}</span>
+                            </div>
+                            <div class="alert-message">
+                                <i class="fas fa-location-dot"></i> ${alert.location} | <i class="fas fa-gun"></i> ${alert.weapon}
+                            </div>
+                            <div class="alert-details">
+                                <span><i class="fas fa-id-card"></i> ID: ${alert.id.substring(0, 8)}</span>
+                                <span><i class="fas fa-flag"></i> Priority: ${alert.priority || alert.threatLevel}</span>
+                                <span><i class="fas fa-car"></i> IoVs: ${alert.total_iovs_notified}</span>
+                            </div>
+                            <div class="alert-actions">
+                                <button class="btn-view-map" onclick="viewAlertOnMap('${alert.id}', '${alert.lat}', '${alert.lng}')">
+                                    <i class="fas fa-map-marked-alt"></i> View on Map
+                                </button>
+                            </div>
+                        </div>`;
+            });
+            
+            container.innerHTML = html;
+            countElement.textContent = alerts.length;
+        }
+
+        // Update Location-based Stats
+        function updateLocationStats(alerts) {
+            const container = document.getElementById('personList');
+            const locationMap = new Map();
+            
+            alerts.forEach(alert => {
+                if (alert.location && alert.location !== 'Unknown Location') {
+                    if (!locationMap.has(alert.location)) {
+                        locationMap.set(alert.location, { count: 0, threats: [] });
+                    }
+                    const loc = locationMap.get(alert.location);
+                    loc.count++;
+                    if (!loc.threats.includes(alert.weapon)) {
+                        loc.threats.push(alert.weapon);
+                    }
+                }
+            });
+            
+            if (locationMap.size === 0) {
+                container.innerHTML = `<div class="empty-state"><i class="fas fa-map-marker-alt fa-3x mb-2"></i><p>No location data available</p></div>`;
+                return;
+            }
+            
+            let html = '';
+            for (let [location, data] of locationMap) {
+                const isDanger = data.count > 2;
+                html += `<div class="person-item ${isDanger ? 'danger' : ''}">
+                            <div class="person-avatar"><i class="fas fa-map-pin"></i></div>
+                            <div class="person-info">
+                                <div class="person-id">📍 ${location}</div>
+                                <div class="person-status">
+                                    <span class="status-badge-sm ${isDanger ? 'status-danger' : 'status-safe'}"></span>
+                                    ${data.count} active threat${data.count > 1 ? 's' : ''}
+                                    ${data.threats.length > 0 ? `<br><small><i class="fas fa-gun"></i> ${data.threats.join(', ')}</small>` : ''}
+                                </div>
+                            </div>
+                        </div>`;
+            }
+            container.innerHTML = html;
+            document.getElementById('personCount').textContent = locationMap.size;
+        }
+
+        // Update Stats
+        function updateStats(alerts) {
+            const critical = alerts.filter(a => a.type === 'CRITICAL').length;
+            const warning = alerts.filter(a => a.type === 'WARNING').length;
+            const info = alerts.filter(a => a.type === 'INFO').length;
+            
+            document.getElementById('totalAlerts').textContent = alerts.length;
+            document.getElementById('criticalCount').textContent = critical;
+            document.getElementById('warningCount').textContent = warning;
+            document.getElementById('infoCount').textContent = info;
+        }
+
+        // Demo Mode (Agar Firebase connect na ho)
+        function startDemoMode() {
+            const demoAlerts = [
+                { id: 'demo1', message: '🔴 KNIFE detected at Wazirabad', timestamp: new Date().toLocaleTimeString(), type: 'CRITICAL', location: 'Wazirabad', weapon: 'KNIFE', priority: 'HIGH', video_thumbnail: null },
+                { id: 'demo2', message: '🟡 Suspicious vehicle at Gujranwala', timestamp: new Date().toLocaleTimeString(), type: 'WARNING', location: 'Gujranwala', weapon: 'Vehicle', priority: 'MEDIUM' },
+                { id: 'demo3', message: '🔴 GUN detected at Sialkot', timestamp: new Date().toLocaleTimeString(), type: 'CRITICAL', location: 'Sialkot', weapon: 'GUN', priority: 'HIGH' }
+            ];
+            setInterval(() => {
+                updateAlertsUI(demoAlerts);
+                updateStats(demoAlerts);
+                updateLocationStats(demoAlerts);
+            }, 2000);
+        }
+
+        function updateFirebaseStatus(connected, message) {
+            const statusDiv = document.getElementById('firebaseStatus');
+            if (connected) {
+                statusDiv.style.background = 'rgba(0,255,149,0.2)';
+                statusDiv.style.border = '1px solid var(--success)';
+                document.getElementById('statusText').innerHTML = `<i class="fas fa-check-circle"></i> ${message}`;
+            } else {
+                statusDiv.style.background = 'rgba(255,77,109,0.2)';
+                statusDiv.style.border = '1px solid var(--danger)';
+                document.getElementById('statusText').innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
+            }
+        }
+
+        function playAlertSound() {
+            try { new Audio().play().catch(() => {}); } catch(e) {}
+        }
+
+        // View Alert on Map Function
+        function viewAlertOnMap(alertId, lat, lng) {
+            window.location.href = `/map?alert=${alertId}&lat=${lat}&lng=${lng}`;
+        }
+
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            notification.style.background = type === 'danger' ? 'rgba(255,77,109,0.95)' : 
+                                          type === 'warning' ? 'rgba(255,193,7,0.95)' : 'rgba(13,202,240,0.95)';
+            notification.innerHTML = `<i class="fas ${type === 'danger' ? 'fa-exclamation-triangle' : type === 'warning' ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i> ${message}`;
+            document.body.appendChild(notification);
+            setTimeout(() => {
+                notification.style.animation = 'slideOutRight 0.3s ease-out';
+                setTimeout(() => notification.remove(), 300);
+            }, 4000);
+        }
+
+        // Start
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 SKYWATCH Dashboard Starting...');
+            initFirebase();
+        });
+    </script>
+</body>
+</html>

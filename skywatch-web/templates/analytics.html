@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SKYWATCH | Advanced Analytics Dashboard</title>
+    
+    <!-- Bootstrap & Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-cyan: #00f2ff;
+            --neon-pink: #ff006e;
+            --danger-glow: #ff4d6d;
+            --success-lime: #b0ff00;
+            --warning-yellow: #ffc107;
+            --dark-glass: rgba(8, 12, 25, 0.85);
+        }
+
+        body {
+            font-family: 'Exo 2', sans-serif;
+            background: linear-gradient(135deg, #050814 0%, #0a0f2a 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(90deg, rgba(0, 242, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(rgba(0, 242, 255, 0.05) 1px, transparent 1px);
+            background-size: 50px 50px;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* Navbar */
+        .navbar {
+            background: linear-gradient(90deg, rgba(13, 202, 240, 0.1), rgba(10, 88, 202, 0.1));
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(13, 202, 240, 0.2);
+            border-radius: 20px;
+            padding: 12px 25px;
+            margin: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .navbar h3 {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 900;
+            letter-spacing: 2px;
+            color: #fff;
+            text-shadow: 0 0 10px var(--primary-cyan);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.2rem;
+        }
+
+        .firebase-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            background: rgba(0,0,0,0.5);
+            margin-left: 10px;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .nav-btn {
+            background: rgba(13, 202, 240, 0.1);
+            border: 1px solid rgba(13, 202, 240, 0.3);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            background: rgba(13, 202, 240, 0.2);
+            transform: translateY(-2px);
+            color: #fff;
+        }
+
+        .nav-btn.active {
+            background: rgba(0, 255, 149, 0.2);
+            border-color: var(--success-lime);
+        }
+
+        .nav-badge {
+            background: #ff4d6d;
+            color: #fff;
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 10px;
+            min-width: 18px;
+            text-align: center;
+        }
+
+        .logout-btn {
+            background: rgba(255, 77, 109, 0.1);
+            border-color: rgba(255, 77, 109, 0.3);
+        }
+
+        /* Page Header */
+        .page-header {
+            text-align: center;
+            margin: 30px 20px;
+        }
+
+        .page-header h2 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #fff, var(--primary-cyan), var(--success-lime));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Stats Cards */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin: 0 15px 20px;
+        }
+
+        .stat-card {
+            background: rgba(15, 25, 45, 0.8);
+            backdrop-filter: blur(15px);
+            border-radius: 15px;
+            padding: 15px;
+            text-align: center;
+            border: 1px solid rgba(13, 202, 240, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            border-color: var(--primary-cyan);
+            box-shadow: 0 0 20px rgba(13,202,240,0.2);
+        }
+
+        .stat-icon {
+            font-size: 1.8rem;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            font-family: 'Orbitron', monospace;
+        }
+
+        .stat-label {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.7rem;
+        }
+
+        .stat-card.cyan { --accent: #00f2ff; }
+        .stat-card.pink { --accent: #ff006e; }
+        .stat-card.lime { --accent: #b0ff00; }
+        .stat-card.yellow { --accent: #ffc107; }
+
+        .stat-card.cyan .stat-icon, .stat-card.cyan .stat-value { color: #00f2ff; }
+        .stat-card.pink .stat-icon, .stat-card.pink .stat-value { color: #ff006e; }
+        .stat-card.lime .stat-icon, .stat-card.lime .stat-value { color: #b0ff00; }
+        .stat-card.yellow .stat-icon, .stat-card.yellow .stat-value { color: #ffc107; }
+
+        /* Charts Grid */
+        .charts-container {
+            margin: 0 15px 20px;
+        }
+
+        .charts-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .chart-card {
+            background: rgba(15, 25, 45, 0.85);
+            backdrop-filter: blur(15px);
+            border-radius: 15px;
+            padding: 15px;
+            border: 1px solid rgba(13, 202, 240, 0.2);
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(13, 202, 240, 0.2);
+        }
+
+        .chart-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 200px;
+        }
+
+        .chart-container.small {
+            height: 180px;
+        }
+
+        /* Full Width Chart */
+        .chart-card.full-width {
+            grid-column: 1 / -1;
+        }
+
+        /* Filter Buttons */
+        .filter-bar {
+            display: flex;
+            gap: 8px;
+            margin: 0 15px 15px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: rgba(255, 255, 255, 0.8);
+            padding: 8px 15px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.8rem;
+        }
+
+        .filter-btn:hover, .filter-btn.active {
+            background: rgba(13, 202, 240, 0.3);
+            border-color: var(--primary-cyan);
+            color: #fff;
+        }
+
+        /* Data Table */
+        .table-card {
+            background: rgba(15, 25, 45, 0.85);
+            backdrop-filter: blur(15px);
+            border-radius: 15px;
+            padding: 15px;
+            border: 1px solid rgba(13, 202, 240, 0.2);
+            margin: 0 15px 20px;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table th {
+            background: rgba(13, 202, 240, 0.15);
+            padding: 12px;
+            text-align: left;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.75rem;
+            color: var(--primary-cyan);
+            border-bottom: 2px solid rgba(13,202,240,0.3);
+        }
+
+        .data-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 0.85rem;
+        }
+
+        .data-table tr:hover {
+            background: rgba(13, 202, 240, 0.05);
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--primary-cyan);
+            border-radius: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .charts-row {
+                grid-template-columns: 1fr;
+            }
+            .stats-row {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <h3>
+            <i class="fas fa-satellite-dish"></i> SKYWATCH Analytics
+            <span id="firebaseStatus" class="firebase-status">
+                <span style="display:inline-block; width:8px; height:8px; background:#ff4d6d; border-radius:50%; margin-right:5px;"></span>
+                Connecting...
+            </span>
+        </h3>
+        <div class="nav-buttons">
+            <a href="/dash" class="nav-btn">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </a>
+            <a href="/alerts" class="nav-btn">
+                <i class="fas fa-bell"></i> Alerts
+            </a>
+            <a href="/logs" class="nav-btn">
+                <i class="fas fa-history"></i> Logs
+            </a>
+            <a href="/analytics" class="nav-btn active">
+                <i class="fas fa-chart-pie"></i> Analytics
+            </a>
+            <a href="/map" class="nav-btn">
+                <i class="fas fa-map-marked-alt"></i> Maps
+            </a>
+            <a href="/logout" class="nav-btn logout-btn">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </div>
+    </nav>
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <h2><i class="fas fa-chart-line"></i> ADVANCED ANALYTICS DASHBOARD</h2>
+        <p>Comprehensive threat detection analysis & insights</p>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+        <button class="filter-btn active" onclick="filterAnalytics('all')">
+            <i class="fas fa-list"></i> All Time
+        </button>
+        <button class="filter-btn" onclick="filterAnalytics('today')">
+            <i class="fas fa-calendar-day"></i> Today
+        </button>
+        <button class="filter-btn" onclick="filterAnalytics('week')">
+            <i class="fas fa-calendar-week"></i> This Week
+        </button>
+        <button class="filter-btn" onclick="filterAnalytics('month')">
+            <i class="fas fa-calendar-alt"></i> This Month
+        </button>
+        
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="stats-row">
+        <div class="stat-card cyan">
+            <div class="stat-icon"><i class="fas fa-exclamation-triangle"></i></div>
+            <div class="stat-value" id="totalAlerts">0</div>
+            <div class="stat-label">TOTAL ALERTS</div>
+        </div>
+        <div class="stat-card pink">
+            <div class="stat-icon"><i class="fas fa-cut"></i></div>
+            <div class="stat-value" id="knifeAlerts">0</div>
+            <div class="stat-label">KNIFE DETECTED</div>
+        </div>
+        <div class="stat-card lime">
+            <div class="stat-icon"><i class="fas fa-gun"></i></div>
+            <div class="stat-value" id="gunAlerts">0</div>
+            <div class="stat-label">GUN DETECTED</div>
+        </div>
+        <div class="stat-card yellow">
+            <div class="stat-icon"><i class="fas fa-fist-raised"></i></div>
+            <div class="stat-value" id="violenceAlerts">0</div>
+            <div class="stat-label">VIOLENCE ALERTS</div>
+        </div>
+        <div class="stat-card cyan">
+            <div class="stat-icon"><i class="fas fa-fire"></i></div>
+            <div class="stat-value" id="fireAlerts">0</div>
+            <div class="stat-label">FIRE DETECTED</div>
+        </div>
+        <div class="stat-card pink">
+            <div class="stat-icon"><i class="fas fa-percentage"></i></div>
+            <div class="stat-value" id="avgConfidence">0%</div>
+            <div class="stat-label">AVG CONFIDENCE</div>
+        </div>
+    </div>
+
+    <!-- Charts Grid -->
+    <div class="charts-container">
+        <div class="charts-row">
+            <!-- Weapon Type Distribution -->
+            <div class="chart-card">
+                <div class="chart-header">
+                    <div class="chart-title"><i class="fas fa-chart-pie"></i> Weapon Type Distribution</div>
+                    <span class="badge bg-primary">Live</span>
+                </div>
+                <div class="chart-container small">
+                    <canvas id="weaponChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Priority Distribution -->
+            <div class="chart-card">
+                <div class="chart-header">
+                    <div class="chart-title"><i class="fas fa-chart-doughnut"></i> Priority Distribution</div>
+                    <span class="badge bg-warning text-dark">Real-time</span>
+                </div>
+                <div class="chart-container small">
+                    <canvas id="priorityChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="charts-row">
+            <!-- Hourly Detection Pattern -->
+            <div class="chart-card">
+                <div class="chart-header">
+                    <div class="chart-title"><i class="fas fa-clock"></i> Hourly Detection Pattern</div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="hourlyChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Daily Trend -->
+            <div class="chart-card">
+                <div class="chart-header">
+                    <div class="chart-title"><i class="fas fa-calendar"></i> 7-Day Alert Trend</div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="charts-row">
+            <!-- Camera-wise Alerts -->
+            <div class="chart-card">
+                <div class="chart-header">
+                    <div class="chart-title"><i class="fas fa-video"></i> Camera-wise Detections</div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="cameraChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Location Heatmap -->
+            <div class="chart-card">
+                <div class="chart-header">
+                    <div class="chart-title"><i class="fas fa-map-marker-alt"></i> Location Analysis</div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="locationChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Monthly Trend - Full Width -->
+        <div class="charts-row">
+            <div class="chart-card full-width">
+                <div class="chart-header">
+                    <div class="chart-title"><i class="fas fa-chart-area"></i> Monthly Detection Trend</div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="monthlyChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Insights Table -->
+    <div class="table-card">
+        <div class="chart-header">
+            <div class="chart-title"><i class="fas fa-lightbulb"></i> Key Insights</div>
+        </div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Metric</th>
+                    <th>Value</th>
+                    <th>Trend</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="insightsTable">
+                <tr>
+                    <td><i class="fas fa-arrow-up text-success"></i> Most Active Hour</td>
+                    <td id="peakHour">--:--</td>
+                    <td><span class="badge bg-success">High Activity</span></td>
+                    <td><i class="fas fa-check-circle text-success"></i></td>
+                </tr>
+                <tr>
+                    <td><i class="fas fa-map-pin text-info"></i> Hotspot Location</td>
+                    <td id="hotspotLocation">Unknown</td>
+                    <td><span class="badge bg-danger">Critical</span></td>
+                    <td><i class="fas fa-exclamation-triangle text-warning"></i></td>
+                </tr>
+                <tr>
+                    <td><i class="fas fa-crosshairs text-warning"></i> Most Common Threat</td>
+                    <td id="commonThreat">Unknown</td>
+                    <td><span class="badge bg-warning text-dark">Monitoring</span></td>
+                    <td><i class="fas fa-eye text-info"></i></td>
+                </tr>
+                <tr>
+                    <td><i class="fas fa-shield-alt text-success"></i> System Accuracy</td>
+                    <td id="systemAccuracy">--%</td>
+                    <td><span class="badge bg-success">Optimal</span></td>
+                    <td><i class="fas fa-check-circle text-success"></i></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBo38muJcR0_gYFKz9gJ1BQEC1twgHy2tE",
+            authDomain: "fypiov.firebaseapp.com",
+            databaseURL: "https://fypiov-default-rtdb.firebaseio.com",
+            projectId: "fypiov",
+            storageBucket: "fypiov.firebasestorage.app",
+            messagingSenderId: "1022795874212",
+            appId: "1:1022795874212:web:1fd40b8bbe7849fd3acb31"
+        };
+
+        let allAlerts = [];
+        let charts = {};
+        let currentFilter = 'all';
+
+        function initFirebase() {
+            const statusSpan = document.getElementById('firebaseStatus');
+            try {
+                firebase.initializeApp(firebaseConfig);
+                const database = firebase.database();
+                
+                database.ref('.info/connected').on('value', (snap) => {
+                    if (snap.val()) {
+                        statusSpan.innerHTML = '<span style="display:inline-block; width:8px; height:8px; background:#00ff95; border-radius:50%; margin-right:5px;"></span> LIVE';
+                        listenToAlerts(database);
+                    } else {
+                        statusSpan.innerHTML = '<span style="display:inline-block; width:8px; height:8px; background:#ff4d6d; border-radius:50%; margin-right:5px;"></span> OFFLINE';
+                    }
+                });
+            } catch(e) { console.error(e); }
+        }
+
+        function listenToAlerts(db) {
+            db.ref('alerts').on('value', (snapshot) => {
+                const alerts = snapshot.val();
+                allAlerts = [];
+                if (alerts) {
+                    Object.keys(alerts).forEach(key => {
+                        const alert = alerts[key];
+                        alert.firebaseId = key;
+                        allAlerts.push(alert);
+                    });
+                    allAlerts.sort((a, b) => (b.timestamp || b.datetime || 0) - (a.timestamp || a.datetime || 0));
+                }
+                updateAnalytics();
+            });
+        }
+
+        function initCharts() {
+            const colors = {
+                cyan: '#00f2ff',
+                pink: '#ff006e',
+                lime: '#b0ff00',
+                yellow: '#ffc107',
+                red: '#ff4d6d',
+                purple: '#9d4edd'
+            };
+
+            Chart.defaults.color = 'rgba(255,255,255,0.7)';
+            Chart.defaults.borderColor = 'rgba(255,255,255,0.1)';
+
+            // 1. Weapon Type Chart
+            charts.weapon = new Chart(document.getElementById('weaponChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['KNIFE', 'GUN', 'VIOLENCE', 'FIRE', 'OTHER'],
+                    datasets: [{
+                        data: [0, 0, 0, 0, 0],
+                        backgroundColor: [colors.pink, colors.cyan, colors.yellow, colors.red, colors.purple],
+                        borderWidth: 2,
+                        borderColor: 'rgba(15, 25, 45, 1)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 12, padding: 15 } }
+                    },
+                    cutout: '65%'
+                }
+            });
+
+            // 2. Priority Chart
+            charts.priority = new Chart(document.getElementById('priorityChart'), {
+                type: 'pie',
+                data: {
+                    labels: ['HIGH', 'MEDIUM', 'LOW'],
+                    datasets: [{
+                        data: [0, 0, 0],
+                        backgroundColor: [colors.red, colors.yellow, colors.lime],
+                        borderWidth: 2,
+                        borderColor: 'rgba(15, 25, 45, 1)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 12, padding: 15 } }
+                    }
+                }
+            });
+
+            // 3. Hourly Chart
+            charts.hourly = new Chart(document.getElementById('hourlyChart'), {
+                type: 'bar',
+                data: {
+                    labels: Array.from({length: 24}, (_, i) => `${i.toString().padStart(2, '0')}:00`),
+                    datasets: [{
+                        label: 'Alerts',
+                        data: new Array(24).fill(0),
+                        backgroundColor: colors.cyan,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { maxTicksLimit: 12, color: 'rgba(255,255,255,0.5)' } },
+                        y: { beginAtZero: true, ticks: { color: 'rgba(255,255,255,0.5)' } }
+                    }
+                }
+            });
+
+            // 4. Trend Chart
+            charts.trend = new Chart(document.getElementById('trendChart'), {
+                type: 'line',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [{
+                        label: 'Alerts',
+                        data: [0, 0, 0, 0, 0, 0, 0],
+                        borderColor: colors.lime,
+                        backgroundColor: 'rgba(176, 255, 0, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 5,
+                        pointBackgroundColor: colors.lime
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color: 'rgba(255,255,255,0.5)' } },
+                        y: { beginAtZero: true, ticks: { color: 'rgba(255,255,255,0.5)' } }
+                    }
+                }
+            });
+
+            // 5. Camera Chart
+            charts.camera = new Chart(document.getElementById('cameraChart'), {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Detections',
+                        data: [],
+                        backgroundColor: [colors.pink, colors.cyan, colors.yellow, colors.lime],
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color: 'rgba(255,255,255,0.5)' } },
+                        y: { beginAtZero: true, ticks: { color: 'rgba(255,255,255,0.5)' } }
+                    }
+                }
+            });
+
+            // 6. Location Chart
+            charts.location = new Chart(document.getElementById('locationChart'), {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Incidents',
+                        data: [],
+                        backgroundColor: colors.yellow,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color: 'rgba(255,255,255,0.5)' } },
+                        y: { beginAtZero: true, ticks: { color: 'rgba(255,255,255,0.5)' } }
+                    }
+                }
+            });
+
+            // 7. Monthly Chart
+            charts.monthly = new Chart(document.getElementById('monthlyChart'), {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: 30}, (_, i) => `${i+1}`),
+                    datasets: [
+                        {
+                            label: 'KNIFE',
+                            data: new Array(30).fill(0),
+                            borderColor: colors.pink,
+                            backgroundColor: 'transparent',
+                            tension: 0.3
+                        },
+                        {
+                            label: 'GUN',
+                            data: new Array(30).fill(0),
+                            borderColor: colors.cyan,
+                            backgroundColor: 'transparent',
+                            tension: 0.3
+                        },
+                        {
+                            label: 'VIOLENCE',
+                            data: new Array(30).fill(0),
+                            borderColor: colors.yellow,
+                            backgroundColor: 'transparent',
+                            tension: 0.3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top', labels: { color: '#fff' } }
+                    },
+                    scales: {
+                        x: { ticks: { color: 'rgba(255,255,255,0.5)' }, title: { display: true, text: 'Day of Month', color: 'rgba(255,255,255,0.5)' } },
+                        y: { beginAtZero: true, ticks: { color: 'rgba(255,255,255,0.5)' } }
+                    }
+                }
+            });
+        }
+
+        function updateAnalytics() {
+            let filtered = [...allAlerts];
+            const now = new Date();
+            
+            if (currentFilter === 'today') {
+                filtered = allAlerts.filter(a => new Date(a.datetime).toDateString() === now.toDateString());
+            } else if (currentFilter === 'week') {
+                const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
+                filtered = allAlerts.filter(a => new Date(a.datetime) >= weekAgo);
+            } else if (currentFilter === 'month') {
+                const monthAgo = new Date(now - 30 * 24 * 60 * 60 * 1000);
+                filtered = allAlerts.filter(a => new Date(a.datetime) >= monthAgo);
+            }
+
+            updateStats(filtered);
+            updateCharts(filtered);
+            updateInsights(filtered);
+        }
+
+        function updateStats(alerts) {
+            const counts = { KNIFE: 0, GUN: 0, VIOLENCE: 0, FIRE: 0 };
+            let totalConfidence = 0;
+            
+            alerts.forEach(a => {
+                const type = a.class || a.type || 'UNKNOWN';
+                if (counts.hasOwnProperty(type)) counts[type]++;
+                totalConfidence += a.confidence || 0;
+            });
+
+            document.getElementById('totalAlerts').textContent = alerts.length;
+            document.getElementById('knifeAlerts').textContent = counts.KNIFE;
+            document.getElementById('gunAlerts').textContent = counts.GUN;
+            document.getElementById('violenceAlerts').textContent = counts.VIOLENCE;
+            document.getElementById('fireAlerts').textContent = counts.FIRE;
+            document.getElementById('avgConfidence').textContent = alerts.length ? (totalConfidence / alerts.length * 100).toFixed(1) + '%' : '0%';
+        }
+
+        function updateCharts(alerts) {
+            if (!charts.weapon) return;
+
+            // Weapon counts
+            const weaponCounts = { KNIFE: 0, GUN: 0, VIOLENCE: 0, FIRE: 0, OTHER: 0 };
+            const priorityCounts = { HIGH: 0, MEDIUM: 0, LOW: 0 };
+            const hourlyCounts = new Array(24).fill(0);
+            const dailyCounts = new Array(7).fill(0);
+            const cameraCounts = {};
+            const locationCounts = {};
+            const monthlyData = {
+                KNIFE: new Array(30).fill(0),
+                GUN: new Array(30).fill(0),
+                VIOLENCE: new Array(30).fill(0)
+            };
+
+            alerts.forEach(a => {
+                const type = a.class || a.type || 'UNKNOWN';
+                if (weaponCounts.hasOwnProperty(type)) weaponCounts[type]++;
+                else weaponCounts.OTHER++;
+
+                const priority = a.priority || 'MEDIUM';
+                if (priorityCounts.hasOwnProperty(priority)) priorityCounts[priority]++;
+
+                const hour = new Date(a.datetime || Date.now()).getHours();
+                hourlyCounts[hour]++;
+
+                const day = new Date(a.datetime || Date.now()).getDay();
+                dailyCounts[day === 0 ? 6 : day - 1]++;
+
+                const cam = a.camera_name || a.camera_id || 'Unknown';
+                cameraCounts[cam] = (cameraCounts[cam] || 0) + 1;
+
+                const loc = a.city || a.Area || 'Unknown';
+                locationCounts[loc] = (locationCounts[loc] || 0) + 1;
+
+                const date = new Date(a.datetime || Date.now()).getDate();
+                if (date >= 1 && date <= 30) {
+                    if (monthlyData[type]) monthlyData[type][date - 1]++;
+                }
+            });
+
+            // Update charts
+            charts.weapon.data.datasets[0].data = [
+                weaponCounts.KNIFE, weaponCounts.GUN, weaponCounts.VIOLENCE, 
+                weaponCounts.FIRE, weaponCounts.OTHER
+            ];
+            charts.weapon.update();
+
+            charts.priority.data.datasets[0].data = [
+                priorityCounts.HIGH, priorityCounts.MEDIUM, priorityCounts.LOW
+            ];
+            charts.priority.update();
+
+            charts.hourly.data.datasets[0].data = hourlyCounts;
+            charts.hourly.update();
+
+            charts.trend.data.datasets[0].data = dailyCounts;
+            charts.trend.update();
+
+            // Camera chart
+            const sortedCameras = Object.entries(cameraCounts).sort((a, b) => b[1] - a[1]).slice(0, 6);
+            charts.camera.data.labels = sortedCameras.map(c => c[0]);
+            charts.camera.data.datasets[0].data = sortedCameras.map(c => c[1]);
+            charts.camera.update();
+
+            // Location chart
+            const sortedLocations = Object.entries(locationCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+            charts.location.data.labels = sortedLocations.map(l => l[0]);
+            charts.location.data.datasets[0].data = sortedLocations.map(l => l[1]);
+            charts.location.update();
+
+            // Monthly chart
+            charts.monthly.data.datasets[0].data = monthlyData.KNIFE;
+            charts.monthly.data.datasets[1].data = monthlyData.GUN;
+            charts.monthly.data.datasets[2].data = monthlyData.VIOLENCE;
+            charts.monthly.update();
+        }
+
+        function updateInsights(alerts) {
+            if (alerts.length === 0) return;
+
+            // Peak hour
+            const hourlyCounts = new Array(24).fill(0);
+            alerts.forEach(a => {
+                const hour = new Date(a.datetime || Date.now()).getHours();
+                hourlyCounts[hour]++;
+            });
+            const peakHour = hourlyCounts.indexOf(Math.max(...hourlyCounts));
+            document.getElementById('peakHour').textContent = `${peakHour.toString().padStart(2, '0')}:00 - ${(peakHour+1).toString().padStart(2, '0')}:00`;
+
+            // Hotspot location
+            const locationCounts = {};
+            alerts.forEach(a => {
+                const loc = a.city || a.Area || 'Unknown';
+                locationCounts[loc] = (locationCounts[loc] || 0) + 1;
+            });
+            const hotspot = Object.entries(locationCounts).sort((a, b) => b[1] - a[1])[0];
+            document.getElementById('hotspotLocation').textContent = hotspot ? hotspot[0] : 'Unknown';
+
+            // Most common threat
+            const weaponCounts = {};
+            alerts.forEach(a => {
+                const type = a.class || a.type || 'UNKNOWN';
+                weaponCounts[type] = (weaponCounts[type] || 0) + 1;
+            });
+            const commonThreat = Object.entries(weaponCounts).sort((a, b) => b[1] - a[1])[0];
+            document.getElementById('commonThreat').textContent = commonThreat ? commonThreat[0] : 'Unknown';
+
+            // System accuracy
+            const avgConf = alerts.reduce((sum, a) => sum + (a.confidence || 0), 0) / alerts.length;
+            document.getElementById('systemAccuracy').textContent = (avgConf * 100).toFixed(1) + '%';
+        }
+
+        function filterAnalytics(period) {
+            currentFilter = period;
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            updateAnalytics();
+        }
+
+        function exportAnalytics() {
+            const data = {
+                totalAlerts: allAlerts.length,
+                filter: currentFilter,
+                timestamp: new Date().toISOString(),
+                alerts: allAlerts
+            };
+            const dataStr = JSON.stringify(data, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+            const link = document.createElement('a');
+            link.setAttribute('href', dataUri);
+            link.setAttribute('download', `analytics_${currentFilter}_${new Date().toISOString().split('T')[0]}.json`);
+            link.click();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initFirebase();
+            initCharts();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>SKYWATCH | Neural Surveillance Nexus</title>
+
+    <!-- Bootstrap & Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    
+    <!-- Google Fonts: Cyberpunk & Futuristic -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    
+    <!-- Chart.js for Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-cyan: #00f2ff;
+            --neon-pink: #ff006e;
+            --danger-glow: #ff4d6d;
+            --success-lime: #b0ff00;
+            --dark-glass: rgba(8, 12, 25, 0.75);
+            --card-border: rgba(0, 242, 255, 0.35);
+        }
+
+        body {
+            font-family: 'Exo 2', sans-serif;
+            background: #010101;
+            overflow: hidden;
+            height: 100vh;
+            color: #fff;
+        }
+
+        /* ===== PREMIUM BACKGROUND LAYERS with 1st.jpg ===== */
+        .hero-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('1st.jpg') center/cover no-repeat fixed;
+            filter: brightness(0.4) contrast(1.2) saturate(1.3);
+            z-index: -5;
+            transform: scale(1.05);
+            animation: slowZoom 24s infinite alternate ease-in-out;
+        }
+
+        @keyframes slowZoom {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.08); }
+        }
+
+        /* Dynamic grid overlay */
+        .cyber-grid {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(0, 242, 255, 0.08) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 242, 255, 0.08) 1px, transparent 1px);
+            background-size: 45px 45px;
+            z-index: -4;
+            pointer-events: none;
+            animation: gridMove 20s linear infinite;
+        }
+
+        @keyframes gridMove {
+            0% { transform: translate(0,0); }
+            100% { transform: translate(45px, 45px); }
+        }
+
+        /* Radial pulse background */
+        .radial-pulse {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 20% 50%, rgba(13,202,240,0.1) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 80%, rgba(255,77,109,0.1) 0%, transparent 50%);
+            animation: pulseBg 8s ease-in-out infinite;
+            z-index: -3;
+            pointer-events: none;
+        }
+
+        @keyframes pulseBg { 
+            0%, 100% { opacity: 0.5; } 
+            50% { opacity: 1; } 
+        }
+
+        .scan-line {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 6px;
+            background: linear-gradient(90deg, transparent, var(--primary-cyan), #ff00cc, var(--primary-cyan), transparent);
+            box-shadow: 0 0 20px cyan;
+            z-index: 10;
+            animation: hyperScan 4s cubic-bezier(0.75, 0.05, 0.25, 1) infinite;
+            opacity: 0.8;
+            pointer-events: none;
+        }
+
+        @keyframes hyperScan {
+            0% { top: -10px; opacity: 0; }
+            20% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+
+        /* Floating Orbs */
+        .floating-orb {
+            position: fixed;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(0,242,255,0.1), transparent);
+            border-radius: 50%;
+            filter: blur(70px);
+            z-index: -2;
+            animation: floatOrb 22s infinite alternate;
+        }
+
+        .orb1 { top: 10%; left: -10%; animation-duration: 22s; background: radial-gradient(circle, rgba(0,242,255,0.12), transparent); }
+        .orb2 { bottom: 0%; right: -10%; background: radial-gradient(circle, rgba(255,0,110,0.12), transparent); animation-duration: 25s; }
+        .orb3 { top: 50%; left: 50%; width: 400px; height: 400px; background: radial-gradient(circle, rgba(13,202,240,0.05), transparent); animation-duration: 28s; }
+
+        @keyframes floatOrb {
+            0% { transform: translate(0,0) scale(1); opacity: 0.3; }
+            100% { transform: translate(60px, 40px) scale(1.2); opacity: 0.6; }
+        }
+
+        /* Noise Overlay */
+        .noise-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-radial-gradient(circle at 20% 30%, rgba(0,0,0,0.15), rgba(0,0,0,0.25) 2px);
+            pointer-events: none;
+            z-index: -1;
+            opacity: 0.4;
+        }
+
+        /* ===== NAVBAR STYLES ===== */
+        .navbar {
+            background: linear-gradient(90deg, rgba(13, 202, 240, 0.15), rgba(10, 88, 202, 0.15));
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(13, 202, 240, 0.4);
+            border-radius: 28px;
+            padding: 12px 28px;
+            margin: 18px 24px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1), 0 0 15px rgba(0,242,255,0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            animation: slideDown 0.8s ease-out forwards;
+        }
+
+        @keyframes slideDown {
+            from { transform: translateY(-100px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .navbar h3 {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            letter-spacing: 3px;
+            background: linear-gradient(135deg, #fff 0%, var(--primary-cyan) 50%, #fff 100%);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.3rem;
+            text-shadow: 0 0 30px rgba(0,242,255,0.3);
+            animation: titleGlow 3s ease-in-out infinite;
+        }
+
+        @keyframes titleGlow {
+            0%, 100% { background-position: 0% center; filter: drop-shadow(0 0 8px rgba(0,242,255,0.4)); }
+            50% { background-position: 100% center; filter: drop-shadow(0 0 20px rgba(0,242,255,0.8)); }
+        }
+
+        .firebase-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 14px;
+            border-radius: 30px;
+            font-size: 0.7rem;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(13,202,240,0.3);
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .nav-btn {
+            background: rgba(13, 202, 240, 0.1);
+            border: 1px solid rgba(13, 202, 240, 0.4);
+            color: #fff;
+            padding: 8px 18px;
+            border-radius: 30px;
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .nav-btn:hover {
+            background: rgba(13, 202, 240, 0.25);
+            border-color: rgba(13, 202, 240, 0.8);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(13, 202, 240, 0.4);
+            color: #fff;
+            text-decoration: none;
+        }
+
+        .nav-badge {
+            background: #ff4d6d;
+            color: #fff;
+            font-size: 0.7rem;
+            padding: 2px 7px;
+            border-radius: 20px;
+            min-width: 20px;
+            text-align: center;
+            position: absolute;
+            top: -6px;
+            right: -8px;
+            font-weight: 700;
+            box-shadow: 0 0 8px #ff4d6d;
+        }
+
+        .logout-btn {
+            background: rgba(255, 77, 109, 0.15);
+            border-color: rgba(255, 77, 109, 0.4);
+        }
+
+        .logout-btn:hover {
+            background: rgba(255, 77, 109, 0.3);
+            border-color: rgba(255, 77, 109, 0.7);
+            box-shadow: 0 5px 15px rgba(255, 77, 109, 0.4);
+        }
+
+        /* Dashboard Container */
+        .dashboard-container {
+            height: calc(100vh - 105px);
+            padding: 0 20px 15px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        /* Dual Camera Row */
+        .dual-camera-row {
+            display: flex;
+            gap: 20px;
+            height: 45%;
+            min-height: 280px;
+        }
+
+        .camera-feed-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .camera-feed-card {
+            background: rgba(8, 12, 28, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--card-border);
+            border-radius: 28px;
+            overflow: hidden;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s ease;
+        }
+
+        .camera-feed-card:hover {
+            border-color: var(--primary-cyan);
+            box-shadow: 0 0 25px rgba(0,242,255,0.2);
+            transform: translateY(-3px);
+        }
+
+        .feed-header {
+            background: linear-gradient(90deg, rgba(13, 202, 240, 0.25), rgba(10, 88, 202, 0.25));
+            padding: 12px 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(13, 202, 240, 0.3);
+        }
+
+        .feed-header h4 {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1rem;
+        }
+
+        .live-indicator {
+            width: 10px;
+            height: 10px;
+            background: #ff4d6d;
+            border-radius: 50%;
+            animation: blink 1.2s infinite;
+            box-shadow: 0 0 6px red;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .camera-badge {
+            background: rgba(13, 202, 240, 0.3);
+            padding: 5px 14px;
+            border-radius: 25px;
+            font-size: 0.75rem;
+        }
+
+        .feed-body {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            min-height: 200px;
+        }
+
+        .camera-feed {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .feed-overlay {
+            position: absolute;
+            bottom: 12px;
+            left: 12px;
+            right: 12px;
+            background: rgba(0, 0, 0, 0.75);
+            padding: 8px 16px;
+            border-radius: 14px;
+            border-left: 4px solid var(--primary-cyan);
+            backdrop-filter: blur(8px);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+        }
+
+        .ip-badge {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-family: monospace;
+            border: 1px solid var(--primary-cyan);
+        }
+
+        /* Bottom Panels */
+        .bottom-panel-row {
+            display: flex;
+            height: 48%;
+            gap: 20px;
+        }
+
+        .panel-container {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .dashboard-card {
+            background: rgba(8, 12, 28, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(13, 202, 240, 0.2);
+            border-radius: 24px;
+            overflow: hidden;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s ease;
+        }
+
+        .dashboard-card:hover {
+            border-color: rgba(13, 202, 240, 0.5);
+            box-shadow: 0 0 20px rgba(13,202,240,0.1);
+        }
+
+        .card-header {
+            padding: 14px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(13, 202, 240, 0.12);
+        }
+
+        .card-header h5 {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1rem;
+        }
+
+        .card-body {
+            padding: 15px;
+            flex: 1;
+            overflow-y: auto;
+            scrollbar-width: thin;
+        }
+
+        /* Alert Items */
+        .alert-item {
+            background: rgba(255, 77, 109, 0.12);
+            border-left: 4px solid var(--danger-glow);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .alert-item:hover {
+            transform: translateX(5px);
+            background: rgba(255, 77, 109, 0.2);
+            box-shadow: 0 5px 15px rgba(255, 77, 109, 0.2);
+        }
+
+        .alert-item.new-alert {
+            animation: alertPulse 0.8s ease-out;
+        }
+
+        @keyframes alertPulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 77, 109, 0.7); }
+            70% { box-shadow: 0 0 0 8px rgba(255, 77, 109, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 77, 109, 0); }
+        }
+
+        .alert-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .alert-title {
+            font-weight: 700;
+            color: var(--danger-glow);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .alert-time {
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.6);
+            font-family: 'Orbitron', monospace;
+        }
+
+        .alert-id {
+            background: rgba(255, 77, 109, 0.3);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.65rem;
+            font-family: monospace;
+        }
+
+        .priority-high { color: #ff4d6d; font-weight: 700; }
+        .priority-medium { color: #ffc107; }
+        .priority-low { color: #0dcaf0; }
+
+        .alert-details-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin: 10px 0;
+            padding: 8px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .stat-item {
+            background: rgba(13, 202, 240, 0.1);
+            border-radius: 12px;
+            padding: 12px;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .stat-item:hover {
+            background: rgba(13, 202, 240, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary-cyan);
+            font-family: 'Orbitron', monospace;
+        }
+
+        .person-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 12px;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border-left: 3px solid var(--primary-cyan);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 25px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: var(--primary-cyan); border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+    <!-- ===== ANIMATED BACKGROUND LAYERS (Same as alerts page) ===== -->
+    <div class="hero-background"></div>
+    <div class="cyber-grid"></div>
+    <div class="radial-pulse"></div>
+    <div class="scan-line"></div>
+    <div class="floating-orb orb1"></div>
+    <div class="floating-orb orb2"></div>
+    <div class="floating-orb orb3"></div>
+    <div class="noise-overlay"></div>
+
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <h3>
+            <i class="fas fa-satellite-dish"></i> SKYWATCH Live Monitoring
+            <span id="firebaseStatus" class="firebase-status">
+                <span class="status-indicator" style="display: inline-block; width: 8px; height: 8px; background: #ff4d6d; border-radius: 50%; margin-right: 5px;"></span>
+                Connecting...
+            </span>
+        </h3>
+        <div class="nav-buttons">
+            <a href="/alerts" class="nav-btn">
+                <i class="fas fa-bell"></i> Alerts
+                <span class="nav-badge" id="alertCountNav">0</span>
+            </a>
+            <a href="/logs" class="nav-btn">
+                <i class="fas fa-history"></i> Logs
+                <span class="nav-badge" id="logCountNav">0</span>
+            </a>
+            <a href="/iov" class="nav-btn">
+                <i class="fas fa-car-side"></i> IOV Fleet
+                <span class="nav-badge" id="iovCountNav">0</span>
+            </a>
+            <a href="/map" class="nav-btn">
+                <i class="fas fa-map-marked-alt"></i> Maps
+            </a>
+            <a href="/profile" class="nav-btn">
+                <i class="fas fa-user-shield"></i> Profile
+            </a>
+            <a href="/logout" class="nav-btn logout-btn">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </div>
+    </nav>
+
+    <!-- MAIN DASHBOARD -->
+    <div class="dashboard-container">
+        <!-- Dual Camera Row -->
+        <div class="dual-camera-row">
+            <div class="camera-feed-container">
+                <div class="camera-feed-card">
+                    <div class="feed-header">
+                        <h4><span class="live-indicator" id="cam1-indicator"></span> CAMERA 01-  RAHWALI</h4>
+                        <span class="camera-badge"><i class="fas fa-video"></i> <span class="ip-badge" id="cam1-ip">192.168.1.4:8080</span></span>
+                    </div>
+                    <div class="feed-body">
+                        <img class="camera-feed" id="cameraFeed1" src="http://192.168.1.3:8080/video" alt="Camera 1">
+                        <div class="feed-overlay">
+                            <div><i class="fas fa-map-marker-alt"></i> <span id="cam1-location">Cantt Gate Rahwali</span></div>
+                            <div><span class="overlay-label">STATUS</span> <strong id="cam1Status">🟢 Live</strong></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="camera-feed-container">
+                <div class="camera-feed-card">
+                    <div class="feed-header">
+                        <h4><span class="live-indicator" id="cam2-indicator"></span> CAMERA 02 - GUJRANWALA</h4>
+                        <span class="camera-badge"><i class="fas fa-video"></i> <span class="ip-badge" id="cam2-ip">192.168.1.5:8080</span></span>
+                    </div>
+                    <div class="feed-body">
+                        <img class="camera-feed" id="cameraFeed2" src="http://192.168.1.5:8080/video" alt="Camera 2">
+                        <div class="feed-overlay">
+                            <div><i class="fas fa-map-marker-alt"></i> <span id="cam2-location">Shahenabad</span></div>
+                            <div><span class="overlay-label">STATUS</span> <strong id="cam2Status">🟢 Live</strong></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Panels Row -->
+        <div class="bottom-panel-row">
+            <div class="panel-container">
+                <div class="dashboard-card">
+                    <div class="card-header" style="background: linear-gradient(90deg, rgba(255,77,109,0.25), rgba(255,107,129,0.2));">
+                        <h5><i class="fas fa-exclamation-triangle"></i> ALERTS</h5>
+                        <span id="alertCountPanel" class="badge bg-danger">0</span>
+                    </div>
+                    <div class="card-body" id="alertSection">
+                        <div class="empty-state"><i class="fas fa-shield-alt fa-3x mb-3"></i><p>Waiting for alerts...</p></div>
+                    </div>
+                </div>
+            </div>
+            <div class="panel-container">
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-video"></i> CAMERA INFO</h5>
+                        <span id="cameraCount" class="badge bg-primary">2</span>
+                    </div>
+                    <div class="card-body" id="cameraInfoList">
+                        <div class="empty-state"><i class="fas fa-camera fa-3x mb-3"></i><p>Loading camera data...</p></div>
+                    </div>
+                </div>
+            </div>
+            <div class="panel-container">
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-chart-line"></i> SYSTEM STATS</h5>
+                        <span id="systemTime" class="badge bg-warning text-dark">--:--:--</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="stats-grid">
+                            <div class="stat-item"><div class="stat-value" id="totalAlerts">0</div><div class="stat-label">TOTAL ALERTS</div></div>
+                            <div class="stat-item"><div class="stat-value" id="activeIOVs">0</div><div class="stat-label">ACTIVE IOVs</div></div>
+                            <div class="stat-item"><div class="stat-value" id="wazirabadAlerts">0</div><div class="stat-label">RAHWALI</div></div>
+                            <div class="stat-item"><div class="stat-value" id="gujranwalaAlerts">0</div><div class="stat-label">SHAHENABAD</div></div>
+                        </div>
+                        <div id="latestAlertInfo" style="margin-top: 15px; padding: 10px; background: rgba(255,77,109,0.15); border-radius: 12px; display: none;">
+                            <small style="color: var(--danger-glow);">⚠️ LATEST ALERT</small>
+                            <div id="latestAlertDetails" style="font-size: 0.8rem; margin-top: 5px;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyC8UxLJq7L8Q8Q8Q8Q8Q8Q8Q8Q8Q8Q8Q",
+            authDomain: "fypiov.firebaseapp.com",
+            databaseURL: "https://fypiov-default-rtdb.firebaseio.com",
+            projectId: "fypiov",
+            storageBucket: "fypiov.appspot.com",
+            messagingSenderId: "822554518314666",
+            appId: "1:822554518314666:web:your-app-id"
+        };
+
+        let allAlerts = [];
+        let cameras = {};
+        let iovs = {};
+
+        function initFirebase() {
+            const statusSpan = document.querySelector('#firebaseStatus');
+            try {
+                firebase.initializeApp(firebaseConfig);
+                const database = firebase.database();
+                
+                database.ref('.info/connected').on('value', (snap) => {
+                    if (snap.val()) {
+                        statusSpan.innerHTML = '<span style="display:inline-block; width:8px; height:8px; background:#00ff95; border-radius:50%; margin-right:5px;"></span> LIVE';
+                        listenToAlerts(database);
+                        listenToCameras(database);
+                        listenToIOVs(database);
+                    } else {
+                        statusSpan.innerHTML = '<span style="display:inline-block; width:8px; height:8px; background:#ff4d6d; border-radius:50%; margin-right:5px;"></span> OFFLINE';
+                    }
+                });
+            } catch(e) { console.error(e); }
+        }
+
+        function listenToAlerts(db) {
+            db.ref('alerts').on('value', (snapshot) => {
+                const alerts = snapshot.val();
+                allAlerts = [];
+                if (alerts) {
+                    Object.keys(alerts).forEach(key => {
+                        const alert = alerts[key];
+                        alert.id = key;
+                        allAlerts.push(alert);
+                    });
+                    allAlerts.sort((a, b) => (b.datetime || '').localeCompare(a.datetime || ''));
+                }
+                updateAlertList(allAlerts);
+                updateStats();
+                updateCharts();
+                if (allAlerts.length > 0) showLatestAlert(allAlerts[0]);
+                document.getElementById('alertCountNav').textContent = allAlerts.length;
+                document.getElementById('alertCountPanel').textContent = allAlerts.length;
+            });
+        }
+
+        function listenToCameras(db) {
+            db.ref('cameras').on('value', (snapshot) => {
+                cameras = snapshot.val() || {};
+                updateCameraInfo();
+            });
+        }
+
+        function listenToIOVs(db) {
+            db.ref('iovs').on('value', (snapshot) => {
+                iovs = snapshot.val() || {};
+                updateStats();
+            });
+        }
+
+        function updateAlertList(alerts) {
+            const section = document.getElementById('alertSection');
+            if (!alerts.length) {
+                section.innerHTML = '<div class="empty-state"><i class="fas fa-shield-alt fa-3x mb-3"></i><p>No alerts yet</p></div>';
+                return;
+            }
+            section.innerHTML = '';
+            alerts.slice(0, 12).forEach(alert => {
+                const div = document.createElement('div');
+                div.className = `alert-item ${alert.id === allAlerts[0]?.id ? 'new-alert' : ''}`;
+                const lat = alert.location?.lat || 'N/A', lng = alert.location?.lng || 'N/A';
+                const priorityClass = alert.priority === 'HIGH' ? 'priority-high' : alert.priority === 'MEDIUM' ? 'priority-medium' : 'priority-low';
+                div.innerHTML = `
+                    <div class="alert-header">
+                        <div class="alert-title"><span class="alert-id">${alert.id?.slice(-8)}</span><span class="${priorityClass}">${alert.class || 'WEAPON'}</span></div>
+                        <span class="alert-time"><i class="far fa-clock"></i> ${alert.datetime?.split('T')[1]?.slice(0,8) || '--:--'}</span>
+                    </div>
+                    <div><i class="fas fa-city"></i> ${alert.city || 'Unknown'} | <i class="fas fa-map-pin"></i> ${alert.Area || alert.full_address || 'N/A'}</div>
+                    <div class="alert-details-grid">
+                        <div><span class="detail-label">Camera</span><div>${alert.camera_name || alert.camera_id || 'Unknown'}</div></div>
+                        <div><span class="detail-label">Confidence</span><div>${(alert.confidence * 100).toFixed(1)}%</div></div>
+                    </div>
+                    <div class="d-flex gap-2 flex-wrap mt-2">
+                        <span class="badge bg-dark">${alert.priority || 'MEDIUM'}</span>
+                        ${alert.acknowledged ? '<span class="badge bg-success">✓ Ack</span>' : '<span class="badge bg-secondary">⏳ Pending</span>'}
+                    </div>
+                `;
+                section.appendChild(div);
+            });
+        }
+
+        function updateCameraInfo() {
+            const list = document.getElementById('cameraInfoList');
+            if (Object.keys(cameras).length === 0) {
+                list.innerHTML = '<div class="empty-state">No camera data</div>';
+                return;
+            }
+            list.innerHTML = '';
+            Object.keys(cameras).forEach(camId => {
+                const cam = cameras[camId];
+                const div = document.createElement('div');
+                div.className = 'person-item';
+                div.innerHTML = `<i class="fas fa-camera fa-fw me-2 text-info"></i><div><strong>${cam.name || camId}</strong><div class="small text-secondary">${cam.type || 'Camera'} | ${cam.status || 'active'}</div></div>`;
+                list.appendChild(div);
+            });
+            document.getElementById('cameraCount').textContent = Object.keys(cameras).length;
+        }
+
+        function updateStats() {
+            document.getElementById('totalAlerts').textContent = allAlerts.length;
+            const onlineIOVs = Object.values(iovs).filter(iov => iov.status === 'online');
+            const onlineCount = onlineIOVs.length;
+            document.getElementById('activeIOVs').textContent = onlineCount;
+            document.getElementById('iovCountNav').textContent = onlineCount;
+            
+            // Update location counters based on Area field from realtime database
+            let waz = 0, guj = 0;
+            allAlerts.forEach(a => {
+                // Check Area field from realtime database
+                if (a.Area) {
+                    if (a.Area.toLowerCase().includes('rahwal')) waz++;
+                    if (a.Area.toLowerCase().includes('shaheen')) guj++;
+                }
+                // Fallback to location field if Area is not available
+                else if (a.location) {
+                    if (a.location.toLowerCase().includes('rahwal')) waz++;
+                    if (a.location.toLowerCase().includes('shaheen')) guj++;
+                }
+            });
+            document.getElementById('wazirabadAlerts').textContent = waz;
+            document.getElementById('gujranwalaAlerts').textContent = guj;
+        }
+
+        function showLatestAlert(alert) {
+            const container = document.getElementById('latestAlertInfo');
+            const details = document.getElementById('latestAlertDetails');
+            if (alert && alert.class) {
+                container.style.display = 'block';
+                details.innerHTML = `<div><strong>${alert.class}</strong> @ ${alert.city || alert.Area}</div><div>${alert.camera_name || alert.camera_id} | ${(alert.confidence*100).toFixed(1)}%</div><small>${alert.datetime || ''}</small>`;
+            } else container.style.display = 'none';
+        }
+
+        function checkCameraConnections() {
+            const cam1 = document.getElementById('cameraFeed1');
+            const cam2 = document.getElementById('cameraFeed2');
+            cam1.onload = () => { document.getElementById('cam1-indicator').style.background = '#00ff95'; document.getElementById('cam1Status').innerHTML = '🟢 Live'; };
+            cam1.onerror = () => { document.getElementById('cam1-indicator').style.background = '#ff4d6d'; document.getElementById('cam1Status').innerHTML = '🔴 Offline'; };
+            cam2.onload = () => { document.getElementById('cam2-indicator').style.background = '#00ff95'; document.getElementById('cam2Status').innerHTML = '🟢 Live'; };
+            cam2.onerror = () => { document.getElementById('cam2-indicator').style.background = '#ff4d6d'; document.getElementById('cam2Status').innerHTML = '🔴 Offline'; };
+        }
+
+        function updateSystemTime() { document.getElementById('systemTime').textContent = new Date().toLocaleTimeString(); }
+
+        // ===== ANALYTICS CHARTS =====
+        let weaponChart, hourlyChart, trendChart;
+
+        function initCharts() {
+            const chartColors = {
+                cyan: '#00f2ff',
+                pink: '#ff006e',
+                lime: '#b0ff00',
+                yellow: '#ffc107',
+                red: '#ff4d6d'
+            };
+
+            // 1. Weapon Type Distribution (Pie Chart)
+            const weaponCtx = document.getElementById('weaponChart').getContext('2d');
+            weaponChart = new Chart(weaponCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['KNIFE', 'GUN', 'VIOLENCE', 'FIRE'],
+                    datasets: [{
+                        data: [0, 0, 0, 0],
+                        backgroundColor: [chartColors.pink, chartColors.cyan, chartColors.yellow, chartColors.red],
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        title: { display: true, text: 'Weapon Types', color: '#fff', font: { size: 10 } }
+                    },
+                    cutout: '60%'
+                }
+            });
+
+            // 2. Hourly Detection Heatmap (Bar Chart)
+            const hourlyCtx = document.getElementById('hourlyChart').getContext('2d');
+            hourlyChart = new Chart(hourlyCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['00', '04', '08', '12', '16', '20'],
+                    datasets: [{
+                        label: 'Alerts',
+                        data: [0, 0, 0, 0, 0, 0],
+                        backgroundColor: chartColors.lime,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        title: { display: true, text: 'Peak Hours', color: '#fff', font: { size: 10 } }
+                    },
+                    scales: {
+                        x: { ticks: { color: 'rgba(255,255,255,0.6)', font: { size: 8 } }, grid: { display: false } },
+                        y: { display: false }
+                    }
+                }
+            });
+
+            // 3. Daily Trend (Line Chart)
+            const trendCtx = document.getElementById('trendChart').getContext('2d');
+            trendChart = new Chart(trendCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [{
+                        label: 'Alerts',
+                        data: [0, 0, 0, 0, 0, 0, 0],
+                        borderColor: chartColors.cyan,
+                        backgroundColor: 'rgba(0,242,255,0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 3,
+                        pointBackgroundColor: chartColors.cyan
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        title: { display: true, text: '7-Day Trend', color: '#fff', font: { size: 10 } }
+                    },
+                    scales: {
+                        x: { ticks: { color: 'rgba(255,255,255,0.6)', font: { size: 8 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                        y: { display: false }
+                    }
+                }
+            });
+        }
+
+        function updateCharts() {
+            if (!weaponChart || !hourlyChart || !trendChart) return;
+
+            // Count weapon types
+            const weaponCounts = { KNIFE: 0, GUN: 0, VIOLENCE: 0, FIRE: 0 };
+            const hourlyCounts = new Array(6).fill(0);
+            const dailyCounts = new Array(7).fill(0);
+
+            allAlerts.forEach(alert => {
+                // Weapon type
+                const type = alert.class || alert.type || 'UNKNOWN';
+                if (weaponCounts.hasOwnProperty(type)) weaponCounts[type]++;
+
+                // Hourly distribution (simplified to 4-hour blocks)
+                const hour = new Date(alert.datetime || Date.now()).getHours();
+                const block = Math.floor(hour / 4);
+                if (block < 6) hourlyCounts[block]++;
+
+                // Daily distribution
+                const day = new Date(alert.datetime || Date.now()).getDay();
+                dailyCounts[day === 0 ? 6 : day - 1]++;
+            });
+
+            // Update charts
+            weaponChart.data.datasets[0].data = [
+                weaponCounts.KNIFE, weaponCounts.GUN, weaponCounts.VIOLENCE, weaponCounts.FIRE
+            ];
+            weaponChart.update();
+
+            hourlyChart.data.datasets[0].data = hourlyCounts;
+            hourlyChart.update();
+
+            trendChart.data.datasets[0].data = dailyCounts;
+            trendChart.update();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initFirebase();
+            initCharts();
+            checkCameraConnections();
+            setInterval(checkCameraConnections, 5000);
+            updateSystemTime();
+            setInterval(updateSystemTime, 1000);
+            document.getElementById('cam1-ip').textContent = '192.168.1.4:8080';
+            document.getElementById('cam2-ip').textContent = '192.168.1.5:8080';
+            setInterval(() => { document.getElementById('logCountNav').textContent = Math.floor(Math.random() * 20); }, 10000);
+        });
+    </script>
+</body>
+</html>

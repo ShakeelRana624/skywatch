@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
+  <title>SKYWATCH | IOV Surveillance Platform</title>
+
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+  <!-- Icons -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+  <style>
+    /* RESET & BASE - NO ZOOM ISSUES, NO SCALING PROBLEMS */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      width: 100%;
+      height: 100%;
+      /* CRITICAL FIX: Prevents automatic zoom/scaling on Chrome */
+      -webkit-text-size-adjust: 100%;
+      -moz-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+      /* No forced zoom */
+      zoom: normal;
+      -moz-transform: none;
+      -webkit-transform: none;
+      transform: none;
+    }
+
+    body {
+      width: 100%;
+      min-height: 100vh;
+      font-family: 'Exo 2', sans-serif;
+      background: #050814;
+      color: #fff;
+      overflow-x: hidden;
+      overflow-y: auto;
+      margin: 0;
+      padding: 0;
+      /* NO transform or scale on body */
+      transform: none !important;
+      -webkit-transform: none !important;
+      -moz-transform: none !important;
+      -ms-transform: none !important;
+      -o-transform: none !important;
+      font-size: 100% !important;
+      line-height: 1.5 !important;
+      position: relative;
+    }
+
+    /* ===== FIXED BACKGROUND - PROPER IMAGE DISPLAY ===== */
+    .fixed-background {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -2;
+      background: linear-gradient(rgba(5, 8, 20, 0.82), rgba(5, 8, 20, 0.88)), 
+                  url('https://images.pexels.com/photos/8080505/pexels-photo-8080505.jpeg?auto=compress&cs=tinysrgb&w=1600') center/cover no-repeat fixed;
+      background-attachment: fixed;
+      /* Fallback and smooth */
+      background-size: cover;
+      background-position: center center;
+      background-repeat: no-repeat;
+    }
+    
+    /* Fallback gradient + backup image from unsplash (reliable drone/city vibe) */
+    .bg-security-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle at 30% 40%, rgba(0,20,50,0.6) 0%, rgba(5,8,20,0.85) 100%);
+      z-index: -1;
+      pointer-events: none;
+    }
+    
+    /* Dynamic grid overlay for tech look */
+    .tech-grid {
+      position: fixed;
+      width: 100%;
+      height: 100%;
+      background-image: 
+        linear-gradient(rgba(13, 202, 240, 0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(13, 202, 240, 0.08) 1px, transparent 1px);
+      background-size: 70px 70px;
+      pointer-events: none;
+      z-index: -1;
+      animation: subtleGridMove 40s linear infinite;
+    }
+    
+    /* radar scanning lines - subtle */
+    .radar-glow {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.25;
+    }
+    .radar-beam {
+      position: absolute;
+      width: 200%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #0dcaf0, #0dcaf0, transparent);
+      filter: blur(2px);
+      animation: radarMove 12s infinite linear;
+      top: 20%;
+      left: -50%;
+    }
+    .radar-beam:nth-child(2) { top: 50%; animation-delay: -4s; opacity: 0.6; }
+    .radar-beam:nth-child(3) { top: 75%; animation-delay: -8s; opacity: 0.4; }
+    
+    /* HERO SECTION - PERFECT SCALING, NO ZOOM GLITCH */
+    .hero-wrapper {
+      width: 100%;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 1.5rem 1rem;
+      position: relative;
+      z-index: 2;
+    }
+    
+    /* Glass panel for logo & title */
+    .glass-panel {
+      background: rgba(5, 12, 28, 0.75);
+      backdrop-filter: blur(14px);
+      border-radius: 32px;
+      padding: 1.5rem 2rem;
+      margin-bottom: 1.5rem;
+      border: 1px solid rgba(13, 202, 240, 0.5);
+      box-shadow: 0 15px 25px rgba(0,0,0,0.5), 0 0 20px rgba(13,202,240,0.2);
+      transition: all 0.3s ease;
+    }
+    
+    .logo-icon {
+      font-size: 3.2rem;
+      color: #0dcaf0;
+      filter: drop-shadow(0 0 15px #0dcaf0);
+      margin-bottom: 0.8rem;
+      display: inline-block;
+      animation: iconPulse 3s infinite;
+    }
+    
+    /* MAIN TITLE - CRYSTAL CLEAR, NO BLUR, NO ZOOM AFFECT */
+    .main-title {
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 900;
+      font-size: clamp(1.3rem, 4vw, 3.2rem);
+      color: #ffffff;
+      text-shadow: 0 0 8px rgba(13,202,240,0.7), 0 0 15px rgba(13,202,240,0.4);
+      letter-spacing: 0.06em;
+      margin: 0.3rem 0;
+      line-height: 1.2;
+      transform: none !important;
+      filter: none !important;
+      -webkit-font-smoothing: antialiased;
+      position: relative;
+      display: inline-block;
+    }
+    
+    .title-underline {
+      width: 60%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #0dcaf0, #00ff95, #0dcaf0, transparent);
+      margin: 0.5rem auto 0;
+      border-radius: 3px;
+      box-shadow: 0 0 8px #0dcaf0;
+    }
+    
+    .subtitle {
+      font-size: clamp(0.85rem, 1.8vw, 1.2rem);
+      color: rgba(255,255,255,0.96);
+      max-width: 750px;
+      margin: 1.5rem auto;
+      padding: 0.8rem 1.5rem;
+      background: rgba(5, 15, 30, 0.65);
+      backdrop-filter: blur(12px);
+      border-radius: 28px;
+      border-left: 3px solid #0dcaf0;
+      border-right: 1px solid rgba(13,202,240,0.3);
+      font-weight: 400;
+      line-height: 1.5;
+      letter-spacing: 0.2px;
+    }
+    
+    /* LAUNCH BUTTON - DYNAMIC */
+    .launch-btn {
+      padding: 0.8rem 2rem;
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 700;
+      font-size: 1rem;
+      letter-spacing: 1.5px;
+      border-radius: 40px;
+      background: linear-gradient(125deg, #0dcaf0, #0a9fbf, #0dcaf0);
+      background-size: 200% auto;
+      color: #010101;
+      border: none;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+      box-shadow: 0 6px 15px rgba(13,202,240,0.5), 0 0 10px #0dcaf0;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 10px;
+      animation: btnPulse 2.5s infinite;
+    }
+    
+    .launch-btn:hover {
+      transform: translateY(-5px) scale(1.02);
+      box-shadow: 0 12px 25px rgba(13,202,240,0.7), 0 0 20px #0dcaf0;
+      background-position: 100% 0;
+      letter-spacing: 2px;
+    }
+    
+    .launch-btn i {
+      font-size: 1.2rem;
+      transition: transform 0.3s;
+    }
+    
+    .launch-btn:hover i {
+      transform: rotate(15deg) scale(1.1);
+    }
+    
+    /* FEATURE CARDS - RESPONSIVE, NO SCALING BUGS */
+    .features-grid {
+      max-width: 1000px;
+      width: 100%;
+      margin: 2.5rem auto 2rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+      padding: 0 1rem;
+    }
+    
+    .feature-card {
+      background: rgba(12, 22, 45, 0.85);
+      backdrop-filter: blur(12px);
+      border-radius: 24px;
+      padding: 1.5rem 1.2rem;
+      text-align: center;
+      border: 1px solid rgba(13,202,240,0.4);
+      transition: all 0.4s ease;
+      box-shadow: 0 12px 20px rgba(0,0,0,0.4);
+    }
+    
+    .feature-card:hover {
+      transform: translateY(-8px);
+      border-color: #0dcaf0;
+      box-shadow: 0 18px 30px rgba(0,0,0,0.5), 0 0 18px rgba(13,202,240,0.4);
+      background: rgba(10, 30, 55, 0.9);
+    }
+    
+    .feature-icon {
+      font-size: 2.5rem;
+      color: #0dcaf0;
+      margin-bottom: 1rem;
+      display: inline-block;
+      transition: all 0.4s;
+    }
+    
+    .feature-card:hover .feature-icon {
+      transform: scale(1.2) rotateY(10deg);
+      color: #00ff95;
+      filter: drop-shadow(0 0 12px #00ff95);
+    }
+    
+    .feature-card h4 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.2rem;
+      margin-bottom: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+    }
+    
+    .feature-card p {
+      font-size: 0.9rem;
+      line-height: 1.4;
+      opacity: 0.9;
+    }
+    
+    /* animations */
+    @keyframes iconPulse {
+      0%, 100% { transform: scale(1); text-shadow: 0 0 10px #0dcaf0; }
+      50% { transform: scale(1.05); text-shadow: 0 0 28px #0dcaf0; }
+    }
+    
+    @keyframes btnPulse {
+      0%, 100% { box-shadow: 0 8px 20px rgba(13,202,240,0.5), 0 0 15px #0dcaf0; }
+      50% { box-shadow: 0 12px 30px rgba(13,202,240,0.8), 0 0 30px #0dcaf0; }
+    }
+    
+    @keyframes radarMove {
+      0% { transform: translateX(-100%) rotate(0deg); opacity: 0; }
+      20% { opacity: 0.6; }
+      80% { opacity: 0.5; }
+      100% { transform: translateX(100%) rotate(0deg); opacity: 0; }
+    }
+    
+    @keyframes subtleGridMove {
+      0% { background-position: 0 0; }
+      100% { background-position: 70px 70px; }
+    }
+    
+    /* particle floating animation */
+    @keyframes floatParticle {
+      0% { transform: translateY(0) translateX(0); opacity: 0.7; }
+      100% { transform: translateY(-120vh) translateX(40px); opacity: 0; }
+    }
+    
+    @keyframes burstOut {
+      0% { transform: scale(0); opacity: 1; }
+      100% { transform: scale(2.5); opacity: 0; }
+    }
+    
+    /* Responsive fine-tuning - ZOOM SAFE */
+    @media (max-width: 992px) {
+      .glass-panel { padding: 1.8rem 2rem; }
+      .feature-card { padding: 1.8rem; }
+      .launch-btn { padding: 1rem 2.2rem; font-size: 1.1rem; }
+    }
+    
+    @media (max-width: 576px) {
+      .hero-wrapper { padding: 1.2rem; }
+      .glass-panel { padding: 1.2rem 1.5rem; border-radius: 32px; }
+      .logo-icon { font-size: 3.2rem; }
+      .main-title { letter-spacing: 0.04em; }
+      .subtitle { padding: 1rem; font-size: 0.95rem; margin: 1.5rem auto; }
+      .feature-card h4 { font-size: 1.3rem; }
+      .launch-btn { padding: 0.8rem 1.6rem; font-size: 0.95rem; gap: 10px; }
+    }
+    
+    /* Force no weird zoom on input or buttons */
+    button, .launch-btn {
+      touch-action: manipulation;
+    }
+    
+    /* Additional overlay for readability */
+    .ambient-glow {
+      position: fixed;
+      bottom: 10%;
+      right: 5%;
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, rgba(13,202,240,0.08) 0%, rgba(0,0,0,0) 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    
+    /* Animated background particles */
+    .bg-particles {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+    
+    .particle {
+      position: absolute;
+      background: rgba(13, 202, 240, 0.6);
+      border-radius: 50%;
+      pointer-events: none;
+      animation: floatUp 8s linear infinite;
+    }
+    
+    .particle:nth-child(1) { width: 4px; height: 4px; left: 10%; animation-delay: 0s; animation-duration: 10s; }
+    .particle:nth-child(2) { width: 6px; height: 6px; left: 20%; animation-delay: 2s; animation-duration: 12s; }
+    .particle:nth-child(3) { width: 3px; height: 3px; left: 30%; animation-delay: 4s; animation-duration: 8s; }
+    .particle:nth-child(4) { width: 5px; height: 5px; left: 40%; animation-delay: 1s; animation-duration: 15s; }
+    .particle:nth-child(5) { width: 7px; height: 7px; left: 50%; animation-delay: 3s; animation-duration: 11s; }
+    .particle:nth-child(6) { width: 4px; height: 4px; left: 60%; animation-delay: 5s; animation-duration: 9s; }
+    .particle:nth-child(7) { width: 6px; height: 6px; left: 70%; animation-delay: 7s; animation-duration: 13s; }
+    .particle:nth-child(8) { width: 3px; height: 3px; left: 80%; animation-delay: 6s; animation-duration: 10s; }
+    .particle:nth-child(9) { width: 5px; height: 5px; left: 85%; animation-delay: 2s; animation-duration: 14s; }
+    .particle:nth-child(10) { width: 4px; height: 4px; left: 90%; animation-delay: 4s; animation-duration: 8s; }
+    
+    @keyframes floatUp {
+      0% {
+        transform: translateY(100vh) rotate(0deg);
+        opacity: 0;
+      }
+      10% {
+        opacity: 1;
+      }
+      90% {
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(-100vh) rotate(360deg);
+        opacity: 0;
+      }
+    }
+    
+    /* Animated gradient overlay */
+    .animated-gradient {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(45deg, 
+        rgba(13, 202, 240, 0.03) 0%, 
+        rgba(0, 255, 149, 0.02) 25%, 
+        rgba(13, 202, 240, 0.03) 50%, 
+        rgba(0, 255, 149, 0.02) 75%, 
+        rgba(13, 202, 240, 0.03) 100%);
+      background-size: 400% 400%;
+      animation: gradientShift 15s ease infinite;
+      pointer-events: none;
+      z-index: 1;
+    }
+    
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- FIXED BACKGROUND: ALWAYS VISIBLE, NO SCALING ISSUE, RELIABLE IMAGE -->
+  <div class="fixed-background"></div>
+  <div class="bg-security-overlay"></div>
+  <div class="animated-gradient"></div>
+  <div class="tech-grid"></div>
+  <div class="radar-glow">
+    <div class="radar-beam"></div>
+    <div class="radar-beam"></div>
+    <div class="radar-beam"></div>
+  </div>
+  <div class="bg-particles">
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+  </div>
+  <div class="ambient-glow"></div>
+
+  <!-- MAIN CONTENT -->
+  <div class="hero-wrapper">
+    <!-- Glass Panel with Title -->
+    <div class="glass-panel">
+      <i class="fas fa-satellite-dish logo-icon"></i>
+      <h1 class="main-title">AI-Based Smart Surveillance & IoV Response System</h1>
+      <div class="title-underline"></div>
+    </div>
+
+    <!-- Subtitle (clear readable) -->
+    <p class="subtitle">
+      <i class="fas fa-microchip me-2"></i>  Intelligent AI-powered surveillance · Real-time threat detection · 
+  Location-based IoV alerting & rapid emergency response for next-generation smart cities.
+    </p>
+
+    <!-- Launch Button -->
+    <button class="launch-btn" id="launchSystemBtn">
+      <i class="fas fa-rocket fa-spin"></i> LAUNCH CONTROL PANEL
+    </button>
+
+    <!-- Features Grid -->
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon"><i class="fas fa-brain"></i></div>
+        <h4>AI-POWERED DETECTION</h4>
+        <p>Advanced deep learning models analyze live CCTV feeds to detect weapons, 
+      violent activities, and fire incidents in real-time with high accuracy and minimal delay.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><i class="fas fa-bolt"></i></div>
+        <h4>LOCATION-AWARE ALERT SYSTEM</h4>
+        <p>Automatically generates alerts with precise location (latitude/longitude & area name) 
+      and intelligently notifies nearest IoV units within dynamic range for rapid response.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><i class="fas fa-network-wired"></i></div>
+        <h4>REAL-TIME RESPONSE</h4>
+        <p>Instant alert transmission to IoV mobile application enabling quick decision-making, 
+      live tracking, and efficient emergency response to minimize damage and save lives.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ============================================================
+    // FIX: ENSURE BACKGROUND IMAGE LOADS WITH MULTIPLE FALLBACKS
+    // ============================================================
+    (function ensureBackgroundImage() {
+      // High-res reliable drone / surveillance themed images (Pexels / Unsplash CDN)
+      const bgImages = [
+        "https://images.pexels.com/photos/8080505/pexels-photo-8080505.jpeg?auto=compress&cs=tinysrgb&w=1600",
+        "https://images.pexels.com/photos/8353796/pexels-photo-8353796.jpeg?auto=compress&cs=tinysrgb&w=1600",
+        "https://images.pexels.com/photos/210182/pexels-photo-210182.jpeg?auto=compress&cs=tinysrgb&w=1600",
+        "https://images.pexels.com/photos/4433833/pexels-photo-4433833.jpeg?auto=compress&cs=tinysrgb&w=1600"
+      ];
+      
+      let bgElement = document.querySelector('.fixed-background');
+      if (!bgElement) return;
+      
+      let imageIndex = 0;
+      
+      function tryLoadImage(url) {
+        const img = new Image();
+        img.onload = function() {
+          // Success: apply background
+          bgElement.style.background = `linear-gradient(rgba(5, 8, 20, 0.82), rgba(5, 8, 20, 0.88)), url('${url}') center/cover no-repeat fixed`;
+          bgElement.style.backgroundSize = "cover";
+          bgElement.style.backgroundPosition = "center center";
+          console.log("✅ Background image loaded:", url);
+        };
+        img.onerror = function() {
+          // Try next fallback
+          imageIndex++;
+          if (imageIndex < bgImages.length) {
+            tryLoadImage(bgImages[imageIndex]);
+          } else {
+            // ultimate fallback: gradient + pattern
+            bgElement.style.background = "linear-gradient(135deg, #050814 0%, #0a1030 100%)";
+            console.warn("All backgrounds failed, using solid gradient");
+          }
+        };
+        img.src = url;
+      }
+      
+      tryLoadImage(bgImages[0]);
+    })();
+    
+    // ============================================================
+    // FIX CHROME ZOOM ISSUE: Ensure no auto zoom on input / page load
+    // ============================================================
+    (function preventAutoZoom() {
+      // This function ensures that viewport meta is respected and no strange scaling
+      const viewportMeta = document.querySelector('meta[name="viewport"]');
+      if (viewportMeta) {
+        viewportMeta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes');
+      }
+      // Additionally, any focus on input wouldn't cause zoom because no inputs
+      // Force body font size stability
+      document.documentElement.style.fontSize = '100%';
+    })();
+    
+    // ============================================================
+    // SYSTEM LAUNCH SIMULATION WITH PARTICLES & REDIRECT
+    // ============================================================
+    function startSystem() {
+      const btn = document.getElementById('launchSystemBtn');
+      if (!btn) return;
+      const originalHTML = btn.innerHTML;
+      
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> INITIALIZING SECURITY PROTOCOLS...';
+      btn.style.background = "linear-gradient(125deg, #00cc99, #00aa88)";
+      btn.style.opacity = "0.9";
+      
+      // Create stunning particle ring effect
+      for (let i = 0; i < 40; i++) {
+        setTimeout(() => {
+          const particle = document.createElement('div');
+          particle.style.position = 'fixed';
+          particle.style.width = `${5 + Math.random() * 8}px`;
+          particle.style.height = particle.style.width;
+          particle.style.backgroundColor = `hsl(${Math.random() * 60 + 180}, 100%, 60%)`;
+          particle.style.borderRadius = '50%';
+          particle.style.left = '50%';
+          particle.style.top = '50%';
+          particle.style.pointerEvents = 'none';
+          particle.style.zIndex = '9999';
+          particle.style.boxShadow = '0 0 15px cyan';
+          const angle = Math.random() * Math.PI * 2;
+          const radius = 80 + Math.random() * 160;
+          const tx = Math.cos(angle) * radius;
+          const ty = Math.sin(angle) * radius;
+          particle.style.setProperty('--dx', `${tx}px`);
+          particle.style.setProperty('--dy', `${ty}px`);
+          particle.style.animation = `burstOut 0.8s cubic-bezier(0.2, 0.9, 0.4, 1.2) forwards`;
+          particle.style.transform = 'translate(-50%, -50%)';
+          
+          const keyframeStyle = document.createElement('style');
+          if (!document.querySelector('#dynamic-particle-style')) {
+            keyframeStyle.id = 'dynamic-particle-style';
+            keyframeStyle.textContent = `
+              @keyframes burstOut {
+                0% { transform: translate(-50%, -50%) scale(0.2); opacity: 1; }
+                70% { transform: translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px))) scale(1); opacity: 0.8; }
+                100% { transform: translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px))) scale(0.8); opacity: 0; }
+              }
+            `;
+            document.head.appendChild(keyframeStyle);
+          }
+          document.body.appendChild(particle);
+          setTimeout(() => particle.remove(), 900);
+        }, i * 25);
+      }
+      
+      // Drone-like floating particles (background)
+      for (let j = 0; j < 30; j++) {
+        setTimeout(() => {
+          const glitch = document.createElement('div');
+          glitch.innerHTML = '<i class="fas fa-drone"></i>';
+          glitch.style.position = 'fixed';
+          glitch.style.left = Math.random() * 100 + '%';
+          glitch.style.bottom = '-30px';
+          glitch.style.fontSize = `${20 + Math.random() * 32}px`;
+          glitch.style.color = `rgba(13, 202, 240, ${0.2 + Math.random() * 0.3})`;
+          glitch.style.zIndex = '1000';
+          glitch.style.animation = `floatParticle ${5 + Math.random() * 7}s linear forwards`;
+          glitch.style.pointerEvents = 'none';
+          document.body.appendChild(glitch);
+          setTimeout(() => glitch.remove(), 6000);
+        }, j * 70);
+      }
+      
+      // After 2.5 seconds, show ready and redirect
+      setTimeout(() => {
+        btn.innerHTML = '<i class="fas fa-check-circle"></i> SYSTEM READY · REDIRECTING';
+        btn.style.background = "linear-gradient(125deg, #00ff95, #00cc66)";
+        btn.style.boxShadow = "0 0 45px #00ff95";
+        
+        // final success explosion effect
+        for (let s = 0; s < 20; s++) {
+          const successSpark = document.createElement('div');
+          successSpark.style.position = 'fixed';
+          successSpark.style.width = '8px';
+          successSpark.style.height = '8px';
+          successSpark.style.background = '#0f0';
+          successSpark.style.borderRadius = '50%';
+          successSpark.style.left = '50%';
+          successSpark.style.top = '50%';
+          successSpark.style.transform = 'translate(-50%, -50%)';
+          const rad = Math.random() * Math.PI * 2;
+          const dist = 70 + Math.random() * 180;
+          successSpark.style.setProperty('--moveX', `${Math.cos(rad) * dist}px`);
+          successSpark.style.setProperty('--moveY', `${Math.sin(rad) * dist}px`);
+          successSpark.style.animation = `sparkFly 0.7s ease-out forwards`;
+          successSpark.style.zIndex = '9999';
+          document.body.appendChild(successSpark);
+          setTimeout(() => successSpark.remove(), 800);
+        }
+        
+        if (!document.querySelector('#spark-style')) {
+          const sparkAnim = document.createElement('style');
+          sparkAnim.id = 'spark-style';
+          sparkAnim.textContent = `
+            @keyframes sparkFly {
+              0% { transform: translate(-50%, -50%) scale(0.5); opacity: 1; }
+              100% { transform: translate(calc(-50% + var(--moveX)), calc(-50% + var(--moveY))) scale(0); opacity: 0; }
+            }
+          `;
+          document.head.appendChild(sparkAnim);
+        }
+        
+        setTimeout(() => {
+          window.location.href = '/dash';
+        }, 1800);
+      }, 2500);
+    }
+    
+    // ============================================================
+    // MOUSE PARALLAX EFFECT (ONLY BUTTON - NO TITLE MOVEMENT)
+    // ============================================================
+    document.addEventListener('mousemove', function(e) {
+      const btn = document.querySelector('.launch-btn');
+      if (!btn || btn.disabled) return;
+      const centerX = window.innerWidth / 2;
+      const centerY = window.innerHeight / 2;
+      const moveX = (e.clientX - centerX) / 45;
+      const moveY = (e.clientY - centerY) / 45;
+      btn.style.transform = `perspective(800px) rotateY(${moveX * 0.5}deg) rotateX(${-moveY * 0.4}deg) translateY(-2px)`;
+    });
+    
+    document.querySelector('.launch-btn')?.addEventListener('mouseleave', function() {
+      const btn = document.querySelector('.launch-btn');
+      if (btn && !btn.disabled) btn.style.transform = 'perspective(800px) rotateY(0deg) rotateX(0deg) translateY(0px)';
+    });
+    
+    // ============================================================
+    // ADD FLOATING DRONE ICONS (AESTHETIC)
+    // ============================================================
+    function addFloatingElements() {
+      const icons = ['fa-drone', 'fa-satellite', 'fa-radar', 'fa-shield-haltered', 'fa-eye'];
+      for (let i = 0; i < 12; i++) {
+        const floatDiv = document.createElement('div');
+        const iconClass = icons[Math.floor(Math.random() * icons.length)];
+        floatDiv.innerHTML = `<i class="fas ${iconClass}"></i>`;
+        floatDiv.style.position = 'fixed';
+        floatDiv.style.left = `${Math.random() * 100}%`;
+        floatDiv.style.top = `${Math.random() * 100}%`;
+        floatDiv.style.fontSize = `${18 + Math.random() * 38}px`;
+        floatDiv.style.opacity = '0.08';
+        floatDiv.style.color = '#0dcaf0';
+        floatDiv.style.zIndex = '0';
+        floatDiv.style.pointerEvents = 'none';
+        floatDiv.style.animation = `floatParticle ${20 + Math.random() * 40}s linear infinite`;
+        floatDiv.style.animationDelay = `${Math.random() * 15}s`;
+        document.body.appendChild(floatDiv);
+      }
+    }
+    
+    // ============================================================
+    // KEYBOARD SHORTCUT (ENTER) TO LAUNCH
+    // ============================================================
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && !document.querySelector('.launch-btn')?.disabled) {
+        e.preventDefault();
+        startSystem();
+      }
+    });
+    
+    // ============================================================
+    // INITIALIZE ALL
+    // ============================================================
+    window.addEventListener('DOMContentLoaded', () => {
+      addFloatingElements();
+      const btn = document.getElementById('launchSystemBtn');
+      if (btn) {
+        btn.addEventListener('click', startSystem);
+      }
+      console.log("✅ SKYWATCH Interface Ready — Zoom issue fixed, background image loaded properly!");
+    });
+  </script>
+</body>
+</html>

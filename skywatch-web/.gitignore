@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+Lib/
+lib/
+lib64/
+include/
+Scripts/
+pyvenv.cfg
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Environment variables
+.env
+.venv
+env/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Firebase credentials (keep private)
+# fypiov-firebase-adminsdk-*.json
